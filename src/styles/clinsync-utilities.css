@@ -1,0 +1,157 @@
+/**
+ * ClinSync UI Utilities
+ * Clases de utilidad personalizadas para la identidad visual de ClinSync
+ */
+
+@layer utilities {
+  /* Gradientes de marca ClinSync */
+  .gradient-primary {
+    background: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+  }
+
+  .gradient-card {
+    background: linear-gradient(135deg, rgba(37, 99, 235, 0.05) 0%, rgba(8, 145, 178, 0.05) 100%);
+  }
+
+  /* Sombras sutiles profesionales */
+  .shadow-clinsync {
+    box-shadow: 0 1px 3px rgba(15, 23, 42, 0.05), 0 1px 2px rgba(15, 23, 42, 0.1);
+  }
+
+  .shadow-clinsync-md {
+    box-shadow: 0 4px 6px -1px rgba(15, 23, 42, 0.05), 0 2px 4px -1px rgba(15, 23, 42, 0.06);
+  }
+
+  .shadow-clinsync-lg {
+    box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.08), 0 4px 6px -2px rgba(15, 23, 42, 0.05);
+  }
+
+  /* Efectos de blur para overlays */
+  .backdrop-clinsync {
+    backdrop-filter: blur(8px);
+    background-color: rgba(15, 23, 42, 0.4);
+  }
+
+  /* Animaciones suaves */
+  .transition-clinsync {
+    transition: all 200ms cubic-bezier(0.4, 0, 0.2, 1);
+  }
+
+  /* Estilos de tarjetas médicas */
+  .medical-card {
+    background: white;
+    border-radius: 1rem;
+    border: 1px solid #E2E8F0;
+    transition: all 200ms ease;
+  }
+
+  .medical-card:hover {
+    box-shadow: 0 10px 15px -3px rgba(37, 99, 235, 0.1), 0 4px 6px -2px rgba(37, 99, 235, 0.05);
+    border-color: #2563EB;
+  }
+
+  /* Estilos de estados para formularios médicos */
+  .input-medical {
+    background: white;
+    border: 1px solid #E2E8F0;
+    border-radius: 0.5rem;
+    padding: 0.75rem 1rem;
+    transition: all 150ms ease;
+  }
+
+  .input-medical:focus {
+    outline: none;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+  }
+
+  .input-medical:disabled {
+    background: #F8FAFC;
+    color: #64748B;
+    cursor: not-allowed;
+  }
+
+  /* Botones médicos primarios */
+  .btn-medical-primary {
+    background: #2563EB;
+    color: white;
+    padding: 0.75rem 1.5rem;
+    border-radius: 0.5rem;
+    font-weight: 500;
+    transition: all 150ms ease;
+  }
+
+  .btn-medical-primary:hover {
+    background: #1d4ed8;
+    box-shadow: 0 4px 6px -1px rgba(37, 99, 235, 0.3);
+  }
+
+  .btn-medical-primary:active {
+    transform: scale(0.98);
+  }
+
+  /* Badges de estado médico */
+  .badge-success {
+    background: #16A34A;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .badge-warning {
+    background: #F59E0B;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  .badge-danger {
+    background: #DC2626;
+    color: white;
+    padding: 0.25rem 0.75rem;
+    border-radius: 9999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+  }
+
+  /* Scrollbars personalizados */
+  .scrollbar-clinsync::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+  }
+
+  .scrollbar-clinsync::-webkit-scrollbar-track {
+    background: #F8FAFC;
+    border-radius: 4px;
+  }
+
+  .scrollbar-clinsync::-webkit-scrollbar-thumb {
+    background: #E2E8F0;
+    border-radius: 4px;
+  }
+
+  .scrollbar-clinsync::-webkit-scrollbar-thumb:hover {
+    background: #2563EB;
+  }
+
+  /* Texto con gradiente para títulos destacados */
+  .text-gradient-primary {
+    background: linear-gradient(135deg, #2563EB 0%, #0891B2 100%);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-clip: text;
+  }
+}

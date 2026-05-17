@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useNavigate } from "react-router";
-import { Eye, EyeOff, Mail, Lock, Activity } from "lucide-react";
+import { Eye, EyeOff, Mail, Lock } from "lucide-react";
+import { Logo } from "../components/ui/Logo";
 
 export default function Login() {
     const navigate = useNavigate();
@@ -32,9 +33,8 @@ export default function Login() {
       {/* Left Column - Branding (Hidden on Mobile) */}
       <div className="hidden lg:flex lg:w-1/2 bg-linear-to-br from-[#2563EB] via-[#0891B2] to-[#0891B2] p-12 flex-col justify-between relative overflow-hidden">
         <div className="relative z-10">
-          <div className="flex items-center gap-2 text-white mb-8">
-            <Activity className="w-8 h-8" />
-            <span className="text-2xl font-bold">ClinSync</span>
+          <div className="mb-8">
+            <Logo textClassName="text-2xl text-white" iconClassName="brightness-0 invert" />
           </div>
           <h1 className="text-4xl font-bold text-white mb-4">
             Sistema inteligente de gestión de citas médicas
@@ -42,6 +42,15 @@ export default function Login() {
           <p className="text-lg text-white/90">
             Agenda tus citas, consulta tus horarios y gestiona tus pagos de forma rápida y segura.
           </p>
+        </div>
+
+        {/* Hero Illustration */}
+        <div className="absolute bottom-8 right-8 z-10 pointer-events-none">
+          <img 
+            src="/about.svg" 
+            alt="Ilustración médica" 
+            className="w-72 lg:w-96 object-contain drop-shadow-2xl opacity-90"
+          />
         </div>
 
         {/* Abstract Medical Visual */}
@@ -53,9 +62,8 @@ export default function Login() {
       <div className="w-full lg:w-1/2 flex items-center justify-center p-6 lg:p-12 bg-[#F8FAFC]">
         <div className="w-full max-w-md">
           {/* Mobile Logo */}
-          <div className="flex lg:hidden items-center justify-center gap-2 text-[#2563EB] mb-8">
-            <Activity className="w-8 h-8" />
-            <span className="text-2xl font-bold">ClinSync</span>
+          <div className="flex lg:hidden justify-center mb-8">
+            <Logo textClassName="text-2xl" />
           </div>
 
           {/* Login Card */}

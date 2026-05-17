@@ -1,6 +1,7 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Activity, User, Mail, Lock, Phone, MapPin, Calendar, Users } from 'lucide-react';
+import { User, Mail, Lock, Phone, MapPin, Calendar, Users } from 'lucide-react';
+import { Logo } from '../components/ui/Logo';
 
 export default function Register() {
   const navigate = useNavigate();
@@ -77,9 +78,8 @@ export default function Register() {
       <div className="max-w-4xl mx-auto">
         {/* Header */}
         <div className="text-center mb-8">
-          <div className="flex items-center justify-center gap-2 text-[#2563EB] mb-4">
-            <Activity className="w-8 h-8" />
-            <span className="text-2xl font-bold">ClinSync</span>
+          <div className="flex justify-center mb-4">
+            <Logo textClassName="text-2xl" />
           </div>
           <h1 className="text-3xl font-bold text-[#0F172A] mb-2">
             Crear cuenta de paciente
