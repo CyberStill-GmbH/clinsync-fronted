@@ -30,9 +30,14 @@ const menuItems = [
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const isActive = (path: string) => {
     if (path === '/dashboard') {
@@ -90,7 +95,7 @@ export default function DashboardLayout() {
             {userMenuOpen && (
               <div className="mt-2 space-y-1">
                 <button
-                  onClick={() => navigate('/')}
+                  onClick={handleLogout}
                   className="w-full flex items-center gap-3 px-4 py-2 rounded-lg text-[#64748B] hover:bg-[#F8FAFC] hover:text-red-600 transition-colors"
                 >
                   <LogOut className="w-4 h-4" />
@@ -162,7 +167,7 @@ export default function DashboardLayout() {
               </div>
             </div>
             <button
-              onClick={() => navigate('/')}
+              onClick={handleLogout}
               className="w-full mt-2 flex items-center gap-3 px-4 py-2 rounded-lg text-[#64748B] hover:bg-[#F8FAFC] hover:text-red-600 transition-colors"
             >
               <LogOut className="w-4 h-4" />

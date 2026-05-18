@@ -1,5 +1,7 @@
 import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
+import { useAuth } from '../features/auth/hooks/useAuth';
+import { NotificationsPopover } from '../components/ui/NotificationsPopover';
 import {
   Activity,
   LayoutDashboard,
@@ -9,7 +11,6 @@ import {
   UserCog,
   Clock,
   Settings,
-  Bell,
   Menu,
   X,
   LogOut,
@@ -29,8 +30,14 @@ const menuItems = [
 export default function AdminLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { logout } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState('');
+
+  const handleLogout = () => {
+    logout();
+    navigate('/');
+  };
 
   const isActive = (path: string) => {
     if (path === '/admin') {
@@ -111,7 +118,7 @@ export default function AdminLayout() {
               </div>
             </div>
             <button
-              onClick={() => navigate('/')}
+              onClick={handleLogout}
               className="w-full mt-2 flex items-center gap-3 px-4 py-2 rounded-lg text-[#64748B] hover:bg-[#F8FAFC] hover:text-red-600 transition-colors"
             >
               <LogOut className="w-4 h-4" />
@@ -187,7 +194,7 @@ export default function AdminLayout() {
               </div>
             </div>
             <button
-              onClick={() => navigate('/')}
+              onClick={handleLogout}
               className="w-full mt-2 flex items-center gap-3 px-4 py-2 rounded-lg text-[#64748B] hover:bg-[#F8FAFC] hover:text-red-600 transition-colors"
             >
               <LogOut className="w-4 h-4" />
@@ -220,10 +227,7 @@ export default function AdminLayout() {
               </div>
 
               {/* Notifications */}
-              <button className="relative p-2 rounded-lg hover:bg-[#F8FAFC] transition-colors">
-                <Bell className="w-6 h-6 text-[#64748B]" />
-                <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
-              </button>
+              <NotificationsPopover />
 
               {/* Avatar (Desktop) */}
               <div className="hidden lg:block w-10 h-10 rounded-full bg-gradient-to-br from-[#2563EB] to-[#0891B2] flex items-center justify-center text-white font-semibold cursor-pointer">
