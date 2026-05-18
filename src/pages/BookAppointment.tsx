@@ -22,6 +22,7 @@ import { useAreas } from '@/features/areas/api/area.hooks';
 import { useCreateAppointment } from '@/features/appointments/api/appointment.hooks';
 import { useSchedulesByArea } from '@/features/schedules/api/schedule.hooks';
 import { appConfig } from '@/app/config';
+import { toast } from 'sonner';
 
 const medicalAreas = [
   { name: 'Medicina General', icon: Stethoscope, color: 'blue' },
@@ -114,11 +115,11 @@ export default function BookAppointment() {
     try {
       const selectedAreaObj = areas.find(a => a.name === selectedArea);
       if (!selectedAreaObj) {
-        alert("Especialidad médica no encontrada.");
+        toast.error('Especialidad médica no encontrada. Por favor, selecciona un área válida.');
         return;
       }
       if (!scheduleId) {
-        alert("Horario no seleccionado. Por favor, vuelva al calendario.");
+        toast.error('Horario no seleccionado. Por favor, vuelve al calendario y elige un horario.');
         return;
       }
       await createAppointmentMutation.mutateAsync({
@@ -128,9 +129,14 @@ export default function BookAppointment() {
       });
       setShowSuccess(true);
       dispatchNotif();
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
-      alert("Error al agendar la cita. Por favor, verifique disponibilidad.");
+      const msg = err?.message || '';
+      if (msg.includes('409') || msg.toLowerCase().includes('disponible') || msg.toLowerCase().includes('conflict')) {
+        toast.error('El horario seleccionado ya no está disponible. Por favor, elige otro horario.');
+      } else {
+        toast.error('Error al agendar la cita. Por favor, verifica disponibilidad e intenta de nuevo.');
+      }
     }
   };
 

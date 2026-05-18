@@ -13,6 +13,7 @@ import {
 import { useAdminDashboard } from '@/features/admin/api/admin.hooks';
 import { useAdminAppointments } from '@/features/appointments/api/appointment.hooks';
 import { appConfig } from '@/app/config';
+import { SkeletonStatCard } from '@/components/ui/SkeletonCard';
 
 const getStatusBadge = (status: string) => {
   const config: Record<string, { bg: string; text: string }> = {
@@ -37,7 +38,7 @@ const getStatusBadge = (status: string) => {
 export default function AdminDashboard() {
   const navigate = useNavigate();
 
-  const { data: dashboardStats } = useAdminDashboard();
+  const { data: dashboardStats, isLoading: statsLoading } = useAdminDashboard();
   const { data: allAdminAppointments = [] } = useAdminAppointments();
 
   const todayVal = dashboardStats?.todayAppointments ?? 0;
@@ -168,6 +169,9 @@ export default function AdminDashboard() {
     <div className="space-y-6">
       {/* Summary Cards */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-6">
+        {statsLoading && Array.from({ length: 5 }).map((_, i) => (
+          <SkeletonStatCard key={i} />
+        ))}
         {summaryCards.map((card) => {
           const Icon = card.icon;
           return (
