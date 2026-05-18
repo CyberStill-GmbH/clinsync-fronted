@@ -48,48 +48,57 @@ export function SkeletonStatCard({ className = '' }: { className?: string }) {
   );
 }
 
+interface PageLoaderProps {
+  isFadingOut?: boolean;
+}
+
 /**
- * Full-page cinematic loading screen featuring a glowing neon ECG heartbeat
- * that draws itself like a digital marker on an obsidian clinical canvas.
+ * Full-page cinematic loading screen featuring a glowing blue ECG heartbeat
+ * that draws itself like a marker on a pristine white clinical canvas.
+ * Fades out smoothly when the page is ready to be revealed.
  */
-export function PageLoader() {
+export function PageLoader({ isFadingOut = false }: PageLoaderProps) {
   return (
-    <div className="min-h-screen bg-[#070A13] flex items-center justify-center relative overflow-hidden">
+    <div
+      className={`fixed inset-0 z-[9999] bg-white flex items-center justify-center transition-all duration-700 cubic-bezier(0.4, 0, 0.2, 1) ${
+        isFadingOut
+          ? 'opacity-0 scale-[1.02] pointer-events-none'
+          : 'opacity-100 scale-100'
+      }`}
+      aria-busy="true"
+      aria-label="Cargando ClinSync..."
+    >
       <style>{`
         @keyframes clinsync-draw {
           0% {
             stroke-dashoffset: 240;
           }
-          45% {
+          50% {
             stroke-dashoffset: 0;
           }
-          70% {
+          75% {
             stroke-dashoffset: 0;
+            filter: drop-shadow(0 0 10px rgba(37, 99, 235, 0.5)) drop-shadow(0 0 2px rgba(37, 99, 235, 0.2));
             opacity: 1;
-            filter: drop-shadow(0 0 15px rgba(37, 99, 235, 0.9)) drop-shadow(0 0 5px rgba(37, 99, 235, 0.4));
           }
-          90%, 100% {
+          95%, 100% {
             stroke-dashoffset: 0;
-            opacity: 0;
-            filter: drop-shadow(0 0 0px transparent);
+            opacity: 0.1;
           }
         }
         .animate-clinsync-draw-line {
           stroke-dasharray: 240;
           stroke-dashoffset: 240;
-          animation: clinsync-draw 3s cubic-bezier(0.25, 1, 0.5, 1) infinite;
+          animation: clinsync-draw 2.5s cubic-bezier(0.25, 1, 0.5, 1) infinite;
         }
       `}</style>
 
-      {/* Deep medical ambient background grid & radial glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.08)_0%,_transparent_70%)] pointer-events-none" />
-      
-      {/* Dynamic scan line effect */}
-      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_50%,_rgba(37,99,235,0.02)_50%)] bg-[length:100%_4px] pointer-events-none" />
+      {/* Subtle soft blue ambient radial glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.02)_0%,_transparent_75%)] pointer-events-none" />
 
       <div className="relative w-80 h-32 flex items-center justify-center">
         <svg
-          className="w-full h-full text-[#3B82F6]"
+          className="w-full h-full text-[#2563EB]"
           viewBox="0 0 100 40"
           fill="none"
           stroke="currentColor"
@@ -98,14 +107,14 @@ export function PageLoader() {
           strokeLinejoin="round"
           xmlns="http://www.w3.org/2000/svg"
         >
-          {/* Faint indicator baseline guideline */}
+          {/* Faint baseline guide */}
           <path
             d="M 10 20 L 35 20 L 42 5 L 53 35 L 60 20 L 90 20"
             className="opacity-5"
             strokeWidth="1.5"
           />
 
-          {/* Core neon heartbeat line that self-draws */}
+          {/* Glowing ECG heartbeat line that draws itself */}
           <path
             d="M 10 20 L 35 20 L 42 5 L 53 35 L 60 20 L 90 20"
             className="animate-clinsync-draw-line"
@@ -115,5 +124,6 @@ export function PageLoader() {
     </div>
   );
 }
+
 
 

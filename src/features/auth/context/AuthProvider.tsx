@@ -8,6 +8,8 @@ import {
   removeStoredUser,
 } from "@/services/storage/token-storage";
 
+import { PageLoader } from "../../../components/ui/SkeletonCard";
+
 interface AuthContextType {
   user: AuthUser | null;
   isAuthenticated: boolean;
@@ -22,13 +24,24 @@ export const AuthContext = createContext<AuthContextType | undefined>(undefined)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isFadingOut, setIsFadingOut] = useState(false);
 
   useEffect(() => {
     const storedUser = getStoredUser();
     if (storedUser) {
       setUser(storedUser);
     }
-    setIsLoading(false);
+
+    // Delay unmounting to let the ECG marker-drawing animation complete gracefully
+    const timer = setTimeout(() => {
+      setIsFadingOut(true);
+      const fadeTimer = setTimeout(() => {
+        setIsLoading(false);
+      }, 700); // Wait for the transition to finish fully
+      return () => clearTimeout(fadeTimer);
+    }, 2500);
+
+    return () => clearTimeout(timer);
   }, []);
 
   const login = (session: AuthSession) => {
@@ -60,6 +73,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }}
     >
       {children}
+      {isLoading && <PageLoader isFadingOut={isFadingOut} />}
     </AuthContext.Provider>
   );
 }
