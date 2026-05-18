@@ -49,113 +49,71 @@ export function SkeletonStatCard({ className = '' }: { className?: string }) {
 }
 
 /**
- * Full-page centered loading screen featuring a minimalist animated ECG heartbeat
- * based on the ClinSync logo and brand identity.
+ * Full-page cinematic loading screen featuring a glowing neon ECG heartbeat
+ * that draws itself like a digital marker on an obsidian clinical canvas.
  */
 export function PageLoader() {
   return (
-    <div className="min-h-screen bg-[#F8FAFC] flex flex-col items-center justify-center relative overflow-hidden">
-      {/* Self-contained CSS for high-fidelity interactive animations */}
+    <div className="min-h-screen bg-[#070A13] flex items-center justify-center relative overflow-hidden">
       <style>{`
-        @keyframes clinsync-heartbeat {
+        @keyframes clinsync-draw {
           0% {
-            stroke-dashoffset: 120;
-            opacity: 0.3;
+            stroke-dashoffset: 240;
           }
-          40% {
-            opacity: 1;
-            filter: drop-shadow(0 0 8px rgba(37, 99, 235, 0.6));
-          }
-          80%, 100% {
+          45% {
             stroke-dashoffset: 0;
-            opacity: 0.3;
           }
-        }
-        @keyframes clinsync-pulse-glow {
-          0%, 100% {
-            transform: scale(0.96);
-            opacity: 0.7;
-          }
-          50% {
-            transform: scale(1.04);
+          70% {
+            stroke-dashoffset: 0;
             opacity: 1;
-            filter: drop-shadow(0 0 12px rgba(37, 99, 235, 0.2));
+            filter: drop-shadow(0 0 15px rgba(37, 99, 235, 0.9)) drop-shadow(0 0 5px rgba(37, 99, 235, 0.4));
           }
-        }
-        @keyframes clinsync-wave {
-          0% {
-            transform: scale(0.85);
+          90%, 100% {
+            stroke-dashoffset: 0;
             opacity: 0;
-          }
-          50% {
-            opacity: 0.15;
-          }
-          100% {
-            transform: scale(1.3);
-            opacity: 0;
+            filter: drop-shadow(0 0 0px transparent);
           }
         }
-        .animate-clinsync-line {
-          stroke-dasharray: 60;
-          stroke-dashoffset: 120;
-          animation: clinsync-heartbeat 2s cubic-bezier(0.4, 0, 0.2, 1) infinite;
-        }
-        .animate-clinsync-logo {
-          animation: clinsync-pulse-glow 2s ease-in-out infinite;
-        }
-        .animate-clinsync-wave-1 {
-          animation: clinsync-wave 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite;
-        }
-        .animate-clinsync-wave-2 {
-          animation: clinsync-wave 3s cubic-bezier(0.1, 0.8, 0.3, 1) infinite 1.5s;
+        .animate-clinsync-draw-line {
+          stroke-dasharray: 240;
+          stroke-dashoffset: 240;
+          animation: clinsync-draw 3s cubic-bezier(0.25, 1, 0.5, 1) infinite;
         }
       `}</style>
 
-      {/* Radial soft ambient glow */}
-      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.04)_0%,_transparent_65%)] pointer-events-none" />
+      {/* Deep medical ambient background grid & radial glow */}
+      <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,_rgba(37,99,235,0.08)_0%,_transparent_70%)] pointer-events-none" />
+      
+      {/* Dynamic scan line effect */}
+      <div className="absolute inset-0 bg-[linear-gradient(rgba(18,24,38,0)_50%,_rgba(37,99,235,0.02)_50%)] bg-[length:100%_4px] pointer-events-none" />
 
-      <div className="relative flex flex-col items-center">
-        {/* Glowing concentric rings */}
-        <div className="absolute w-36 h-36 rounded-full border border-blue-200/40 animate-clinsync-wave-1 pointer-events-none" />
-        <div className="absolute w-36 h-36 rounded-full border border-blue-100/30 animate-clinsync-wave-2 pointer-events-none" />
+      <div className="relative w-80 h-32 flex items-center justify-center">
+        <svg
+          className="w-full h-full text-[#3B82F6]"
+          viewBox="0 0 100 40"
+          fill="none"
+          stroke="currentColor"
+          strokeWidth="3.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          xmlns="http://www.w3.org/2000/svg"
+        >
+          {/* Faint indicator baseline guideline */}
+          <path
+            d="M 10 20 L 35 20 L 42 5 L 53 35 L 60 20 L 90 20"
+            className="opacity-5"
+            strokeWidth="1.5"
+          />
 
-        {/* Center Animated Logo Icon container */}
-        <div className="relative w-28 h-28 bg-white rounded-3xl border border-[#E2E8F0] shadow-xl flex items-center justify-center animate-clinsync-logo p-4 z-10">
-          <svg
-            className="w-20 h-20 text-[#2563EB]"
-            viewBox="0 0 24 24"
-            fill="none"
-            stroke="currentColor"
-            strokeWidth="2.5"
-            strokeLinecap="round"
-            strokeLinejoin="round"
-            xmlns="http://www.w3.org/2000/svg"
-          >
-            {/* Background static shadow wave */}
-            <path
-              d="M2 12h4l3-9l6 18l3-9h4"
-              className="opacity-10"
-              strokeWidth="2"
-            />
-            {/* Foreground animated heartbeat line */}
-            <path
-              d="M2 12h4l3-9l6 18l3-9h4"
-              className="animate-clinsync-line"
-            />
-          </svg>
-        </div>
-
-        {/* Logo Text & Tagline */}
-        <div className="mt-8 text-center z-10">
-          <h1 className="text-2xl font-bold tracking-tight text-[#0F172A]">
-            Clin<span className="text-[#2563EB]">Sync</span>
-          </h1>
-          <p className="mt-2 text-xs font-semibold uppercase tracking-wider text-[#94A3B8] max-w-[200px] leading-relaxed">
-            Sincronizando tu Salud
-          </p>
-        </div>
+          {/* Core neon heartbeat line that self-draws */}
+          <path
+            d="M 10 20 L 35 20 L 42 5 L 53 35 L 60 20 L 90 20"
+            className="animate-clinsync-draw-line"
+          />
+        </svg>
       </div>
     </div>
   );
 }
+
 
