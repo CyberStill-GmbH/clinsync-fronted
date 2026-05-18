@@ -2,9 +2,14 @@ import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { User, Mail, Lock, Phone, MapPin, Calendar, Users } from 'lucide-react';
 import { Logo } from '../components/ui/Logo';
+import { useAuth } from '../features/auth/hooks/useAuth';
+import { useRegisterPatient } from '../features/auth/api/auth.hooks';
+import { appConfig } from '../app/config';
 
 export default function Register() {
   const navigate = useNavigate();
+  const { login: authenticate } = useAuth();
+  const registerMutation = useRegisterPatient();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
     firstName: '',
@@ -67,10 +72,55 @@ export default function Register() {
     if (!validate()) return;
 
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
-      navigate('/dashboard');
-    }, 1500);
+    if (appConfig.useMocks) {
+      setTimeout(() => {
+        setIsLoading(false);
+        const mockSession = {
+          token: "mock-jwt-token-xyz",
+          user: {
+            id: "mock-patient-123",
+            email: formData.email.toLowerCase(),
+            role: "PATIENT" as const,
+            name: `${formData.firstName} ${formData.lastName}`,
+            fullName: `${formData.firstName} ${formData.lastName}`,
+            dni: formData.dni,
+            phone: formData.phone,
+          }
+        };
+        authenticate(mockSession);
+        navigate('/dashboard');
+      }, 1500);
+    } else {
+      try {
+        let mappedGender = "OTRO";
+        if (formData.gender === "M") mappedGender = "MASCULINO";
+        else if (formData.gender === "F") mappedGender = "FEMENINO";
+
+        await registerMutation.mutateAsync({
+          firstName: formData.firstName.trim(),
+          lastName: formData.lastName.trim(),
+          dni: formData.dni.trim(),
+          phone: formData.phone.trim(),
+          email: formData.email.trim(),
+          password: formData.password.trim(),
+          confirmPassword: formData.confirmPassword.trim(),
+          birthDate: formData.birthDate || undefined,
+          gender: mappedGender,
+          address: formData.address.trim() || undefined,
+          district: formData.district.trim() || undefined,
+          emergencyContactName: formData.emergencyContact.trim() || undefined,
+          emergencyContactPhone: formData.emergencyPhone.trim() || undefined,
+        });
+
+        setIsLoading(false);
+        navigate('/dashboard');
+      } catch (err: any) {
+        setIsLoading(false);
+        setErrors({
+          email: err.response?.data?.message || err.message || "Error al registrar la cuenta",
+        });
+      }
+    }
   };
 
   return (

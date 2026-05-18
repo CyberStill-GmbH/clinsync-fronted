@@ -1,76 +1,27 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Search, User, Phone, Mail, Calendar, X, Eye } from 'lucide-react';
-
-interface Patient {
-  id: string;
-  fullName: string;
-  dni: string;
-  phone: string;
-  email: string;
-  birthDate: string;
-  address?: string;
-  district?: string;
-  emergencyContact?: string;
-  emergencyPhone?: string;
-  lastAppointment: string;
-  totalAppointments: number;
-}
-
-const mockPatients: Patient[] = [
-  {
-    id: '1',
-    fullName: 'Mariana García López',
-    dni: '12345678',
-    phone: '987654321',
-    email: 'mariana@example.com',
-    birthDate: '1990-05-15',
-    address: 'Av. Los Pinos 123',
-    district: 'Miraflores',
-    emergencyContact: 'Carlos García',
-    emergencyPhone: '998877665',
-    lastAppointment: '2026-05-20',
-    totalAppointments: 12,
-  },
-  {
-    id: '2',
-    fullName: 'José Rodríguez Silva',
-    dni: '87654321',
-    phone: '912345678',
-    email: 'jose@example.com',
-    birthDate: '1985-08-22',
-    address: 'Jr. Las Flores 456',
-    district: 'San Isidro',
-    lastAppointment: '2026-05-18',
-    totalAppointments: 8,
-  },
-  {
-    id: '3',
-    fullName: 'Ana Torres Morales',
-    dni: '45678912',
-    phone: '923456789',
-    email: 'ana@example.com',
-    birthDate: '1992-11-30',
-    lastAppointment: '2026-05-15',
-    totalAppointments: 15,
-  },
-  {
-    id: '4',
-    fullName: 'Carlos Mendoza Ruiz',
-    dni: '78945612',
-    phone: '934567890',
-    email: 'carlos@example.com',
-    birthDate: '1988-03-10',
-    address: 'Calle Los Robles 789',
-    district: 'Surco',
-    lastAppointment: '2026-05-10',
-    totalAppointments: 6,
-  },
-];
+import { useAdminPatients } from '../../features/patients/api/patient.hooks';
+import type { Patient } from '../../features/patients/types/patient.types';
 
 export default function AdminPatients() {
+  const { data: allPatients = [] } = useAdminPatients();
+  
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedPatient, setSelectedPatient] = useState<Patient | null>(null);
   const [showDetails, setShowDetails] = useState(false);
+
+  const filteredPatients = useMemo(() => {
+    return allPatients.filter(patient => {
+      if (!searchQuery) return true;
+      const query = searchQuery.toLowerCase();
+      return (
+        patient.fullName.toLowerCase().includes(query) ||
+        patient.dni.includes(query) ||
+        patient.phone.includes(query) ||
+        patient.email.toLowerCase().includes(query)
+      );
+    });
+  }, [allPatients, searchQuery]);
 
   const openDetails = (patient: Patient) => {
     setSelectedPatient(patient);
@@ -110,7 +61,7 @@ export default function AdminPatients() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0]">
-              {mockPatients.map((patient) => (
+              {filteredPatients.map((patient) => (
                 <tr key={patient.id} className="hover:bg-[#F8FAFC] transition-colors">
                   <td className="px-6 py-4">
                     <span className="font-medium text-[#0F172A]">{patient.fullName}</span>
@@ -148,7 +99,7 @@ export default function AdminPatients() {
 
       {/* Mobile Cards */}
       <div className="lg:hidden space-y-4">
-        {mockPatients.map((patient) => (
+        {filteredPatients.map((patient) => (
           <div key={patient.id} className="bg-white border border-[#E2E8F0] rounded-2xl p-6">
             <h3 className="font-bold text-[#0F172A] mb-4">{patient.fullName}</h3>
             <div className="space-y-2 mb-4">

@@ -1,46 +1,68 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router';
 import { Calendar, ChevronLeft, ChevronRight, Check, AlertCircle } from 'lucide-react';
-
-const medicalAreas = [
-  'Medicina General',
-  'Cardiología',
-  'Pediatría',
-  'Dermatología',
-  'Ginecología',
-  'Traumatología',
-  'Psicología',
-  'Laboratorio',
-];
-
-const timeSlots = [
-  { time: '08:00 AM', available: true },
-  { time: '08:30 AM', available: true },
-  { time: '09:00 AM', available: false },
-  { time: '09:30 AM', available: true },
-  { time: '10:00 AM', available: true },
-  { time: '10:30 AM', available: false },
-  { time: '11:00 AM', available: true },
-  { time: '11:30 AM', available: true },
-  { time: '02:00 PM', available: true },
-  { time: '02:30 PM', available: true },
-  { time: '03:00 PM', available: true },
-  { time: '03:30 PM', available: false },
-  { time: '04:00 PM', available: true },
-  { time: '04:30 PM', available: true },
-  { time: '05:00 PM', available: true },
-  { time: '05:30 PM', available: false },
-];
+import { useAreas } from '@/features/areas/api/area.hooks';
+import { useSchedulesByArea } from '@/features/schedules/api/schedule.hooks';
+import { appConfig } from '@/app/config';
 
 export default function Schedules() {
   const navigate = useNavigate();
   const location = useLocation();
   const selectedAreaFromState = location.state?.selectedArea;
 
-  const [selectedArea, setSelectedArea] = useState(selectedAreaFromState || medicalAreas[0]);
-  const [selectedDate, setSelectedDate] = useState(new Date(2026, 4, 20)); // May 20, 2026
+  const { data: areas = [] } = useAreas();
+  const displayedAreas = areas.length > 0 ? areas : [
+    { id: '1', name: 'Medicina General' },
+    { id: '2', name: 'Cardiología' },
+    { id: '3', name: 'Pediatría' },
+    { id: '4', name: 'Dermatología' },
+    { id: '5', name: 'Ginecología' },
+    { id: '6', name: 'Traumatología' },
+    { id: '7', name: 'Psicología' },
+    { id: '8', name: 'Laboratorio' },
+  ];
+
+  const [selectedArea, setSelectedArea] = useState(selectedAreaFromState || displayedAreas[0].name);
+  const [selectedDate, setSelectedDate] = useState(location.state?.date || new Date(2026, 4, 20)); // May 20, 2026
   const [selectedTime, setSelectedTime] = useState('');
+  const [selectedScheduleId, setSelectedScheduleId] = useState('');
+  const [selectedDoctor, setSelectedDoctor] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+
+  const currentAreaObj = areas.find(a => a.name === selectedArea);
+  const areaId = currentAreaObj?.id !== undefined ? String(currentAreaObj.id) : '';
+  const { data: schedules = [] } = useSchedulesByArea(areaId);
+
+  const activeDateString = selectedDate.toISOString().split('T')[0];
+  const activeSchedules = schedules.filter(s => s.date === activeDateString);
+
+  const mockTimeSlots = [
+    { id: 'm1', time: '08:00 AM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm2', time: '08:30 AM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm3', time: '09:00 AM', available: false },
+    { id: 'm4', time: '09:30 AM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm5', time: '10:00 AM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm6', time: '10:30 AM', available: false },
+    { id: 'm7', time: '11:00 AM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm8', time: '11:30 AM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm9', time: '02:00 PM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm10', time: '02:30 PM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm11', time: '03:00 PM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm12', time: '03:30 PM', available: false },
+    { id: 'm13', time: '04:00 PM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm14', time: '04:30 PM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm15', time: '05:00 PM', available: true, doctor: 'Dr. Carlos Méndez' },
+    { id: 'm16', time: '05:30 PM', available: false },
+  ];
+
+  const slotsToRender = appConfig.useMocks 
+    ? mockTimeSlots 
+    : activeSchedules.map(s => ({
+        id: s.id,
+        time: `${s.startTime} - ${s.endTime}`,
+        available: s.status === 'Disponible',
+        doctor: s.doctor,
+      }));
 
   const handleContinue = () => {
     if (selectedTime) {
@@ -49,6 +71,8 @@ export default function Schedules() {
           area: selectedArea,
           date: selectedDate,
           time: selectedTime,
+          scheduleId: selectedScheduleId,
+          doctor: selectedDoctor,
         },
       });
     }
@@ -133,9 +157,9 @@ export default function Schedules() {
               onChange={(e) => setSelectedArea(e.target.value)}
               className="w-full px-4 py-3 rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB] focus:border-transparent"
             >
-              {medicalAreas.map((area) => (
-                <option key={area} value={area}>
-                  {area}
+              {displayedAreas.map((area) => (
+                <option key={area.id} value={area.name}>
+                  {area.name}
                 </option>
               ))}
             </select>
@@ -224,13 +248,19 @@ export default function Schedules() {
           ) : (
             <>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 mb-6 max-h-96 overflow-y-auto">
-                {timeSlots.map((slot) => (
+                {slotsToRender.map((slot) => (
                   <button
-                    key={slot.time}
-                    onClick={() => slot.available && setSelectedTime(slot.time)}
+                    key={slot.id}
+                    onClick={() => {
+                      if (slot.available) {
+                        setSelectedTime(slot.time);
+                        setSelectedScheduleId(slot.id);
+                        setSelectedDoctor(slot.doctor || '');
+                      }
+                    }}
                     disabled={!slot.available}
                     className={`
-                      py-3 px-4 rounded-lg font-medium text-sm transition-all flex items-center justify-center gap-2
+                      py-3 px-4 rounded-lg font-medium text-sm transition-all flex flex-col items-center justify-center gap-1
                       ${
                         selectedTime === slot.time
                           ? 'bg-[#2563EB] text-white ring-2 ring-[#2563EB] ring-offset-2'
@@ -240,13 +270,20 @@ export default function Schedules() {
                       }
                     `}
                   >
-                    {slot.time}
-                    {selectedTime === slot.time && <Check className="w-4 h-4" />}
+                    <div className="flex items-center gap-1 font-semibold">
+                      {slot.time}
+                      {selectedTime === slot.time && <Check className="w-4 h-4" />}
+                    </div>
+                    {slot.doctor && (
+                      <div className={`text-[11px] ${selectedTime === slot.time ? 'text-blue-100' : 'text-gray-500'}`}>
+                        {slot.doctor}
+                      </div>
+                    )}
                   </button>
                 ))}
               </div>
 
-              {timeSlots.every((slot) => !slot.available) && (
+              {slotsToRender.length === 0 || slotsToRender.every((slot) => !slot.available) ? (
                 <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-lg">
                   <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
                   <div>
@@ -258,7 +295,7 @@ export default function Schedules() {
                     </p>
                   </div>
                 </div>
-              )}
+              ) : null}
 
               {/* Legend */}
               <div className="flex items-center gap-6 pt-4 border-t border-[#E2E8F0] text-sm">

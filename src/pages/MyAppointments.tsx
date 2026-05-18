@@ -1,95 +1,7 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import { Calendar, Clock, MapPin, Phone, AlertCircle, CheckCircle, XCircle } from 'lucide-react';
-
-type AppointmentStatus =
-  | 'Pendiente'
-  | 'Confirmada'
-  | 'Validada por recepción'
-  | 'Reprogramada'
-  | 'Atendida'
-  | 'No asistió'
-  | 'Cancelada por recepción';
-
-interface Appointment {
-  id: string;
-  area: string;
-  date: string;
-  time: string;
-  status: AppointmentStatus;
-  professional?: string;
-  code: string;
-  reason?: string;
-}
-
-const upcomingAppointments: Appointment[] = [
-  {
-    id: '1',
-    area: 'Cardiología',
-    date: 'Viernes, 24 de mayo',
-    time: '10:30 AM',
-    status: 'Confirmada',
-    professional: 'Dr. Carlos Méndez',
-    code: 'APT-2026-001',
-    reason: 'Control de presión arterial',
-  },
-  {
-    id: '2',
-    area: 'Dermatología',
-    date: 'Lunes, 27 de mayo',
-    time: '3:00 PM',
-    status: 'Pendiente',
-    code: 'APT-2026-002',
-  },
-  {
-    id: '3',
-    area: 'Medicina General',
-    date: 'Jueves, 30 de mayo',
-    time: '11:00 AM',
-    status: 'Validada por recepción',
-    professional: 'Dra. Ana Torres',
-    code: 'APT-2026-003',
-  },
-];
-
-const historyAppointments: Appointment[] = [
-  {
-    id: '4',
-    area: 'Traumatología',
-    date: 'Martes, 14 de mayo',
-    time: '9:00 AM',
-    status: 'Atendida',
-    professional: 'Dr. Roberto Silva',
-    code: 'APT-2026-004',
-  },
-  {
-    id: '5',
-    area: 'Oftalmología',
-    date: 'Viernes, 10 de mayo',
-    time: '2:30 PM',
-    status: 'Atendida',
-    professional: 'Dra. María López',
-    code: 'APT-2026-005',
-  },
-];
-
-const cancelledAppointments: Appointment[] = [
-  {
-    id: '6',
-    area: 'Psicología',
-    date: 'Miércoles, 8 de mayo',
-    time: '4:00 PM',
-    status: 'Cancelada por recepción',
-    code: 'APT-2026-006',
-  },
-  {
-    id: '7',
-    area: 'Pediatría',
-    date: 'Lunes, 6 de mayo',
-    time: '10:00 AM',
-    status: 'No asistió',
-    code: 'APT-2026-007',
-  },
-];
+import { useMyAppointments } from '../features/appointments/api/appointment.hooks';
+import type { Appointment, AppointmentStatus } from '../features/appointments/types/appointment.types';
 
 const getStatusBadge = (status: AppointmentStatus) => {
   const statusConfig = {
@@ -187,6 +99,20 @@ export default function MyAppointments() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'history' | 'cancelled'>('upcoming');
   const [selectedArea, setSelectedArea] = useState('');
   const [selectedStatus, setSelectedStatus] = useState('');
+  
+  const { data: allAppointments = [], isLoading } = useMyAppointments();
+
+  const upcomingAppointments = useMemo(() => 
+    allAppointments.filter(apt => ['Pendiente', 'Confirmada', 'Validada por recepción', 'Reprogramada'].includes(apt.status)),
+  [allAppointments]);
+
+  const historyAppointments = useMemo(() => 
+    allAppointments.filter(apt => ['Atendida'].includes(apt.status)),
+  [allAppointments]);
+
+  const cancelledAppointments = useMemo(() => 
+    allAppointments.filter(apt => ['Cancelada por recepción', 'No asistió'].includes(apt.status)),
+  [allAppointments]);
 
   const getCurrentAppointments = () => {
     if (activeTab === 'upcoming') return upcomingAppointments;
@@ -199,6 +125,10 @@ export default function MyAppointments() {
     if (selectedStatus && apt.status !== selectedStatus) return false;
     return true;
   });
+
+  if (isLoading) {
+    return <div className="p-6 text-center text-gray-500">Cargando tus citas...</div>;
+  }
 
   return (
     <div className="space-y-6">

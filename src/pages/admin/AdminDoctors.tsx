@@ -1,57 +1,19 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit, Power, X, UserCog } from 'lucide-react';
 import { toast } from 'sonner';
-
-interface Doctor {
-  id: string;
-  fullName: string;
-  document?: string;
-  phone: string;
-  email: string;
-  medicalArea: string;
-  isActive: boolean;
-}
-
-const mockDoctors: Doctor[] = [
-  {
-    id: '1',
-    fullName: 'Dr. Carlos Méndez',
-    document: 'CMP 12345',
-    phone: '987654321',
-    email: 'carlos.mendez@clinsync.com',
-    medicalArea: 'Cardiología',
-    isActive: true,
-  },
-  {
-    id: '2',
-    fullName: 'Dra. Ana Torres',
-    document: 'CMP 54321',
-    phone: '912345678',
-    email: 'ana.torres@clinsync.com',
-    medicalArea: 'Medicina General',
-    isActive: true,
-  },
-  {
-    id: '3',
-    fullName: 'Dr. Roberto Silva',
-    phone: '923456789',
-    email: 'roberto.silva@clinsync.com',
-    medicalArea: 'Traumatología',
-    isActive: true,
-  },
-  {
-    id: '4',
-    fullName: 'Dra. María López',
-    document: 'CMP 98765',
-    phone: '934567890',
-    email: 'maria.lopez@clinsync.com',
-    medicalArea: 'Dermatología',
-    isActive: false,
-  },
-];
+import { useAdminDoctors } from '../../features/doctors/api/doctor.hooks';
+import type { Doctor } from '../../features/doctors/types/doctor.types';
 
 export default function AdminDoctors() {
-  const [doctors, setDoctors] = useState(mockDoctors);
+  const { data: fetchedDoctors = [] } = useAdminDoctors();
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
+
+  useEffect(() => {
+    if (fetchedDoctors.length > 0) {
+      setDoctors(fetchedDoctors);
+    }
+  }, [fetchedDoctors]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingDoctor, setEditingDoctor] = useState<Doctor | null>(null);
   const [formData, setFormData] = useState({

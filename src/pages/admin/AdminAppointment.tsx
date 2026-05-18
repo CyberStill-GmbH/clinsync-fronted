@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Calendar,
   Clock,
@@ -16,97 +16,17 @@ import {
   Stethoscope
 } from 'lucide-react';
 import { toast } from 'sonner';
-
-type AppointmentStatus =
-  | 'Pendiente'
-  | 'Confirmada'
-  | 'Validada por recepción'
-  | 'Reprogramada'
-  | 'Cancelada por recepción'
-  | 'Atendida'
-  | 'No asistió';
-
-interface Appointment {
-  id: string;
-  code: string;
-  patient: string;
-  dni: string;
-  phone: string;
-  email: string;
-  area: string;
-  doctor?: string;
-  date: string;
-  time: string;
-  status: AppointmentStatus;
-  reason?: string;
-}
-
-const mockAppointments: Appointment[] = [
-  {
-    id: '1',
-    code: 'APT-2026-001',
-    patient: 'Mariana García López',
-    dni: '12345678',
-    phone: '987654321',
-    email: 'mariana@example.com',
-    area: 'Cardiología',
-    doctor: 'Dr. Carlos Méndez',
-    date: '2026-05-24',
-    time: '10:30 AM',
-    status: 'Pendiente',
-    reason: 'Control de presión arterial',
-  },
-  {
-    id: '2',
-    code: 'APT-2026-002',
-    patient: 'José Rodríguez Silva',
-    dni: '87654321',
-    phone: '912345678',
-    email: 'jose@example.com',
-    area: 'Traumatología',
-    doctor: 'Dr. Roberto Silva',
-    date: '2026-05-24',
-    time: '11:00 AM',
-    status: 'Validada por recepción',
-  },
-  {
-    id: '3',
-    code: 'APT-2026-003',
-    patient: 'Ana Torres Morales',
-    dni: '45678912',
-    phone: '923456789',
-    email: 'ana@example.com',
-    area: 'Dermatología',
-    date: '2026-05-27',
-    time: '02:00 PM',
-    status: 'Confirmada',
-  },
-  {
-    id: '4',
-    code: 'APT-2026-004',
-    patient: 'Carlos Mendoza Ruiz',
-    dni: '78945612',
-    phone: '934567890',
-    email: 'carlos@example.com',
-    area: 'Medicina General',
-    doctor: 'Dra. Ana Torres',
-    date: '2026-05-23',
-    time: '03:30 PM',
-    status: 'Atendida',
-  },
-  {
-    id: '5',
-    code: 'APT-2026-005',
-    patient: 'Lucía Fernández Castro',
-    dni: '32165498',
-    phone: '945678901',
-    email: 'lucia@example.com',
-    area: 'Pediatría',
-    date: '2026-05-22',
-    time: '04:00 PM',
-    status: 'No asistió',
-  },
-];
+import {
+  useAdminAppointments,
+  useValidateAppointment,
+  useRescheduleAppointment,
+  useCancelAppointment,
+  useUpdateAppointmentAttendance
+} from '../../features/appointments/api/appointment.hooks';
+import { getAreas } from '../../features/areas/api/area.service';
+import { createSchedule, getSchedulesByArea } from '../../features/schedules/api/schedule.service';
+import { appConfig } from '../../app/config';
+import type { Appointment, AppointmentStatus } from '../../features/appointments/types/appointment.types';
 
 const tabs = [
   { id: 'all', label: 'Todas' },
@@ -119,24 +39,31 @@ const tabs = [
   { id: 'no-show', label: 'No asistió' },
 ];
 
-const getStatusBadge = (status: AppointmentStatus) => {
-  const config: Record<AppointmentStatus, { bg: string; text: string; icon: any }> = {
-    'Pendiente': { bg: 'bg-blue-100', text: 'text-blue-700', icon: Clock },
-    'Confirmada': { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle },
-    'Validada por recepción': { bg: 'bg-teal-100', text: 'text-teal-700', icon: CheckCircle },
-    'Reprogramada': { bg: 'bg-purple-100', text: 'text-purple-700', icon: Calendar },
-    'Atendida': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle },
-    'No asistió': { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle },
-    'Cancelada por recepción': { bg: 'bg-gray-100', text: 'text-gray-700', icon: XCircle },
+const getStatusBadge = (status: AppointmentStatus | string) => {
+  const config: Record<string, { bg: string; text: string; icon: any; label: string }> = {
+    'Pendiente': { bg: 'bg-blue-100', text: 'text-blue-700', icon: Clock, label: 'Pendiente' },
+    'PENDING': { bg: 'bg-blue-100', text: 'text-blue-700', icon: Clock, label: 'Pendiente' },
+    'Confirmada': { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle, label: 'Confirmada' },
+    'CONFIRMED': { bg: 'bg-green-100', text: 'text-green-700', icon: CheckCircle, label: 'Confirmada' },
+    'Validada por recepción': { bg: 'bg-teal-100', text: 'text-teal-700', icon: CheckCircle, label: 'Validada por recepción' },
+    'VALIDATED_BY_RECEPTION': { bg: 'bg-teal-100', text: 'text-teal-700', icon: CheckCircle, label: 'Validada por recepción' },
+    'Reprogramada': { bg: 'bg-purple-100', text: 'text-purple-700', icon: Calendar, label: 'Reprogramada' },
+    'RESCHEDULED': { bg: 'bg-purple-100', text: 'text-purple-700', icon: Calendar, label: 'Reprogramada' },
+    'Atendida': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle, label: 'Atendida' },
+    'ATTENDED': { bg: 'bg-emerald-100', text: 'text-emerald-700', icon: CheckCircle, label: 'Atendida' },
+    'No asistió': { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle, label: 'No asistió' },
+    'NO_SHOW': { bg: 'bg-red-100', text: 'text-red-700', icon: XCircle, label: 'No asistió' },
+    'Cancelada por recepción': { bg: 'bg-gray-100', text: 'text-gray-700', icon: XCircle, label: 'Cancelada por recepción' },
+    'CANCELLED_BY_RECEPTION': { bg: 'bg-gray-100', text: 'text-gray-700', icon: XCircle, label: 'Cancelada por recepción' },
   };
 
-  const style = config[status];
+  const style = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', icon: Clock, label: status };
   const Icon = style.icon;
 
   return (
     <span className={`inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
       <Icon className="w-3 h-3" />
-      {status}
+      {style.label}
     </span>
   );
 };
@@ -153,6 +80,41 @@ export default function AdminAppointments() {
   const [filterArea, setFilterArea] = useState('');
   const [filterStatus, setFilterStatus] = useState('');
   const [actionMenuOpen, setActionMenuOpen] = useState<string | null>(null);
+
+  const { data: allAppointments = [] } = useAdminAppointments();
+
+  const filteredAppointments = useMemo(() => {
+    return allAppointments.filter(apt => {
+      // 1. Tab filter
+      if (activeTab === 'today') {
+        // Implement logic if needed, e.g. apt.date === today
+      } else if (activeTab === 'pending' && apt.status !== 'Pendiente') return false;
+      else if (activeTab === 'validated' && apt.status !== 'Validada por recepción') return false;
+      else if (activeTab === 'rescheduled' && apt.status !== 'Reprogramada') return false;
+      else if (activeTab === 'cancelled' && apt.status !== 'Cancelada por recepción') return false;
+      else if (activeTab === 'attended' && apt.status !== 'Atendida') return false;
+      else if (activeTab === 'no-show' && apt.status !== 'No asistió') return false;
+
+      // 2. Search query (patient or DNI)
+      if (searchQuery) {
+        const query = searchQuery.toLowerCase();
+        if (
+          !apt.patientName?.toLowerCase().includes(query) &&
+          !apt.patientDni?.includes(query)
+        ) {
+          return false;
+        }
+      }
+
+      // 3. Area filter
+      if (filterArea && apt.area !== filterArea) return false;
+
+      // 4. Status filter
+      if (filterStatus && apt.status !== filterStatus) return false;
+
+      return true;
+    });
+  }, [allAppointments, activeTab, searchQuery, filterArea, filterStatus]);
 
   // Reschedule form
   const [rescheduleData, setRescheduleData] = useState({
@@ -199,44 +161,185 @@ export default function AdminAppointments() {
     setActionMenuOpen(null);
   };
 
-  const handleValidate = () => {
-    toast.success('Cita validada correctamente');
-    setShowValidate(false);
-    setSelectedAppointment(null);
+  const validateMutation = useValidateAppointment();
+  const rescheduleMutation = useRescheduleAppointment();
+  const cancelMutation = useCancelAppointment();
+  const attendanceMutation = useUpdateAppointmentAttendance();
+
+  const handleValidate = async () => {
+    if (!selectedAppointment) return;
+    try {
+      await validateMutation.mutateAsync(selectedAppointment.id);
+      window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
+        detail: {
+          title: 'Cita Validada',
+          message: `Has validado correctamente la cita de ${selectedAppointment.patientName || 'Paciente'} para ${selectedAppointment.area}.`,
+          type: 'appointment'
+        }
+      }));
+      toast.success('Cita validada correctamente');
+      setShowValidate(false);
+      setSelectedAppointment(null);
+    } catch (err: any) {
+      toast.error(err.message || 'Error al validar la cita');
+    }
   };
 
-  const handleReschedule = () => {
+  const handleReschedule = async () => {
+    if (!selectedAppointment) return;
+    if (!rescheduleData.newDate || !rescheduleData.newTime) {
+      toast.error('La fecha y hora son obligatorias');
+      return;
+    }
     if (!rescheduleData.reason.trim()) {
       toast.error('El motivo de reprogramación es obligatorio');
       return;
     }
-    toast.success('Cita reprogramada correctamente');
-    setShowReschedule(false);
-    setSelectedAppointment(null);
-    setRescheduleData({ newDate: '', newTime: '', reason: '', notes: '' });
+
+    if (appConfig.useMocks) {
+      toast.success('Cita reprogramada correctamente');
+      setShowReschedule(false);
+      setSelectedAppointment(null);
+      setRescheduleData({ newDate: '', newTime: '', reason: '', notes: '' });
+      return;
+    }
+
+    try {
+      const areas = await getAreas();
+      const areaObj = areas.find(a => a.name === selectedAppointment.area);
+      const areaId = areaObj?.id;
+      if (!areaId) {
+        toast.error('Especialidad de la cita no encontrada');
+        return;
+      }
+
+      // Convert "08:00 AM" to "08:00"
+      const rawTime = rescheduleData.newTime.split(' ')[0];
+      const isPM = rescheduleData.newTime.includes('PM');
+      let [hours, minutes] = rawTime.split(':');
+      if (isPM && hours !== '12') {
+        hours = String(Number(hours) + 12);
+      } else if (!isPM && hours === '12') {
+        hours = '00';
+      }
+      const startTime = `${hours.padStart(2, '0')}:${minutes.padStart(2, '0')}`;
+      
+      let endHours = Number(hours);
+      let endMinutes = Number(minutes) + 30;
+      if (endMinutes >= 60) {
+        endHours += 1;
+        endMinutes -= 60;
+      }
+      const endTime = `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+
+      const schedules = await getSchedulesByArea(String(areaId));
+      let matchedSchedule = schedules.find(s => 
+        s.date === rescheduleData.newDate && 
+        s.startTime === startTime
+      );
+
+      let scheduleId = matchedSchedule?.id;
+
+      if (!scheduleId) {
+        const newSchedule = await createSchedule({
+          areaId: String(areaId),
+          date: rescheduleData.newDate,
+          startTime,
+          endTime,
+          doctor: selectedAppointment.professional || 'Dra. Ana Torres',
+        });
+        scheduleId = newSchedule.id;
+      }
+
+      await rescheduleMutation.mutateAsync({
+        appointmentId: selectedAppointment.id,
+        payload: {
+          newScheduleId: scheduleId,
+          reason: rescheduleData.reason,
+          internalNote: rescheduleData.notes || undefined,
+        }
+      });
+
+      window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
+        detail: {
+          title: 'Cita Reprogramada',
+          message: `Has reprogramado la cita de ${selectedAppointment.patientName || 'Paciente'} para el ${rescheduleData.newDate}.`,
+          type: 'appointment'
+        }
+      }));
+
+      toast.success('Cita reprogramada correctamente');
+      setShowReschedule(false);
+      setSelectedAppointment(null);
+      setRescheduleData({ newDate: '', newTime: '', reason: '', notes: '' });
+    } catch (err: any) {
+      toast.error(err.message || 'Error al reprogramar la cita');
+    }
   };
 
-  const handleCancel = () => {
+  const handleCancel = async () => {
+    if (!selectedAppointment) return;
     if (!cancelReason.trim()) {
       toast.error('El motivo de cancelación es obligatorio');
       return;
     }
-    toast.success('Cita cancelada correctamente');
-    setShowCancel(false);
-    setSelectedAppointment(null);
-    setCancelReason('');
+    if (cancelReason.trim().length < 5) {
+      toast.error('El motivo debe tener al menos 5 caracteres');
+      return;
+    }
+    try {
+      await cancelMutation.mutateAsync({
+        appointmentId: selectedAppointment.id,
+        payload: {
+          cancellationReason: cancelReason,
+        }
+      });
+      window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
+        detail: {
+          title: 'Cita Cancelada',
+          message: `Has cancelado la cita de ${selectedAppointment.patientName || 'Paciente'} por el motivo: "${cancelReason}".`,
+          type: 'system'
+        }
+      }));
+      toast.success('Cita cancelada correctamente');
+      setShowCancel(false);
+      setSelectedAppointment(null);
+      setCancelReason('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al cancelar la cita');
+    }
   };
 
-  const handleAttendance = () => {
-    if (attendanceType === 'attended') {
-      toast.success('Cita marcada como atendida');
-    } else {
-      toast.success('Cita marcada como no asistió');
+  const handleAttendance = async () => {
+    if (!selectedAppointment) return;
+    try {
+      const dbStatus = attendanceType === 'attended' ? 'ATTENDED' : 'NO_SHOW';
+      await attendanceMutation.mutateAsync({
+        appointmentId: selectedAppointment.id,
+        payload: {
+          status: dbStatus as any,
+          observation: attendanceNotes || undefined,
+        }
+      });
+      window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
+        detail: {
+          title: attendanceType === 'attended' ? 'Asistencia Registrada' : 'Inasistencia Registrada',
+          message: `Marcaste la cita de ${selectedAppointment.patientName || 'Paciente'} como ${attendanceType === 'attended' ? 'asistió' : 'no asistió'}.`,
+          type: 'system'
+        }
+      }));
+      if (attendanceType === 'attended') {
+        toast.success('Cita marcada como atendida');
+      } else {
+        toast.success('Cita marcada como no asistió');
+      }
+      setShowAttendance(false);
+      setSelectedAppointment(null);
+      setAttendanceType('attended');
+      setAttendanceNotes('');
+    } catch (err: any) {
+      toast.error(err.message || 'Error al registrar asistencia');
     }
-    setShowAttendance(false);
-    setSelectedAppointment(null);
-    setAttendanceType('attended');
-    setAttendanceNotes('');
   };
 
   return (
@@ -335,22 +438,22 @@ export default function AdminAppointments() {
               </tr>
             </thead>
             <tbody className="divide-y divide-[#E2E8F0]">
-              {mockAppointments.map((appointment) => (
+              {filteredAppointments.map((appointment) => (
                 <tr key={appointment.id} className="hover:bg-[#F8FAFC] transition-colors">
                   <td className="px-6 py-4">
                     <span className="font-medium text-[#0F172A]">{appointment.code}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-[#0F172A]">{appointment.patient}</span>
+                    <span className="text-[#0F172A]">{appointment.patientName}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-[#64748B]">{appointment.dni}</span>
+                    <span className="text-[#64748B]">{appointment.patientDni}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-[#0F172A]">{appointment.area}</span>
                   </td>
                   <td className="px-6 py-4">
-                    <span className="text-[#64748B]">{appointment.doctor || '—'}</span>
+                    <span className="text-[#64748B]">{appointment.professional || '—'}</span>
                   </td>
                   <td className="px-6 py-4">
                     <span className="text-[#0F172A]">{appointment.date}</span>
@@ -425,11 +528,11 @@ export default function AdminAppointments() {
 
       {/* Mobile Cards */}
       <div className="lg:hidden space-y-4">
-        {mockAppointments.map((appointment) => (
+        {filteredAppointments.map((appointment) => (
           <div key={appointment.id} className="bg-white border border-[#E2E8F0] rounded-2xl p-6">
             <div className="flex items-start justify-between mb-4">
               <div>
-                <h3 className="font-bold text-[#0F172A] mb-1">{appointment.patient}</h3>
+                <h3 className="font-bold text-[#0F172A] mb-1">{appointment.patientName}</h3>
                 <p className="text-sm text-[#64748B]">{appointment.code}</p>
               </div>
               {getStatusBadge(appointment.status)}
@@ -491,19 +594,19 @@ export default function AdminAppointments() {
                 <div className="space-y-3">
                   <div>
                     <p className="text-sm text-[#64748B]">Nombre completo</p>
-                    <p className="font-medium text-[#0F172A]">{selectedAppointment.patient}</p>
+                    <p className="font-medium text-[#0F172A]">{selectedAppointment.patientName}</p>
                   </div>
                   <div>
                     <p className="text-sm text-[#64748B]">DNI</p>
-                    <p className="font-medium text-[#0F172A]">{selectedAppointment.dni}</p>
+                    <p className="font-medium text-[#0F172A]">{selectedAppointment.patientDni}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Phone className="w-4 h-4 text-[#64748B]" />
-                    <p className="text-sm text-[#0F172A]">{selectedAppointment.phone}</p>
+                    <p className="text-sm text-[#0F172A]">{selectedAppointment.patientPhone}</p>
                   </div>
                   <div className="flex items-center gap-2">
                     <Mail className="w-4 h-4 text-[#64748B]" />
-                    <p className="text-sm text-[#0F172A]">{selectedAppointment.email}</p>
+                    <p className="text-sm text-[#0F172A]">{selectedAppointment.patientEmail}</p>
                   </div>
                 </div>
               </div>
@@ -518,10 +621,10 @@ export default function AdminAppointments() {
                     <p className="text-sm text-[#64748B]">Área médica</p>
                     <p className="font-medium text-[#0F172A]">{selectedAppointment.area}</p>
                   </div>
-                  {selectedAppointment.doctor && (
+                  {selectedAppointment.professional && (
                     <div>
                       <p className="text-sm text-[#64748B]">Médico asignado</p>
-                      <p className="font-medium text-[#0F172A]">{selectedAppointment.doctor}</p>
+                      <p className="font-medium text-[#0F172A]">{selectedAppointment.professional}</p>
                     </div>
                   )}
                   <div className="flex items-center gap-2">
@@ -587,11 +690,11 @@ export default function AdminAppointments() {
             <div className="p-4 bg-[#F8FAFC] rounded-lg mb-6 space-y-2">
               <div className="flex justify-between">
                 <span className="text-sm text-[#64748B]">Paciente:</span>
-                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patient}</span>
+                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patientName}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-[#64748B]">DNI:</span>
-                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.dni}</span>
+                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patientDni}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-sm text-[#64748B]">Área:</span>
@@ -634,7 +737,7 @@ export default function AdminAppointments() {
             <div className="p-4 bg-[#F8FAFC] rounded-lg mb-6 space-y-2">
               <div>
                 <span className="text-sm text-[#64748B]">Paciente: </span>
-                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patient}</span>
+                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patientName}</span>
               </div>
               <div>
                 <span className="text-sm text-[#64748B]">Fecha actual: </span>
@@ -746,7 +849,7 @@ export default function AdminAppointments() {
               </p>
               <p className="text-sm">
                 <span className="text-[#64748B]">Paciente: </span>
-                <span className="font-medium text-[#0F172A]">{selectedAppointment.patient}</span>
+                <span className="font-medium text-[#0F172A]">{selectedAppointment.patientName}</span>
               </p>
             </div>
 
@@ -793,7 +896,7 @@ export default function AdminAppointments() {
             <div className="p-4 bg-[#F8FAFC] rounded-lg mb-6 space-y-2">
               <div>
                 <span className="text-sm text-[#64748B]">Paciente: </span>
-                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patient}</span>
+                <span className="text-sm font-medium text-[#0F172A]">{selectedAppointment.patientName}</span>
               </div>
               <div>
                 <span className="text-sm text-[#64748B]">Área: </span>

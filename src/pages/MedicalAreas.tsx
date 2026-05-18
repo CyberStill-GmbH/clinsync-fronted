@@ -1,110 +1,18 @@
 import { useNavigate } from 'react-router';
+import { useAreas } from '../features/areas/api/area.hooks';
 import {
   Stethoscope,
-  Heart,
-  Baby,
-  Sparkles,
-  Users,
-  Bone,
-  Brain,
-  FlaskConical,
   Clock,
   ArrowRight
 } from 'lucide-react';
 
-const medicalAreas = [
-  {
-    id: 1,
-    name: 'Medicina General',
-    icon: Stethoscope,
-    description: 'Consultas médicas generales para diagnóstico y tratamiento.',
-    availableSlots: 12,
-    color: 'blue',
-    bgColor: 'bg-blue-50',
-    iconColor: 'text-blue-600',
-    badgeColor: 'bg-blue-100 text-blue-700',
-  },
-  {
-    id: 2,
-    name: 'Cardiología',
-    icon: Heart,
-    description: 'Especialidad en enfermedades del corazón y sistema cardiovascular.',
-    availableSlots: 8,
-    color: 'red',
-    bgColor: 'bg-red-50',
-    iconColor: 'text-red-600',
-    badgeColor: 'bg-red-100 text-red-700',
-  },
-  {
-    id: 3,
-    name: 'Pediatría',
-    icon: Baby,
-    description: 'Atención médica especializada para bebés, niños y adolescentes.',
-    availableSlots: 15,
-    color: 'pink',
-    bgColor: 'bg-pink-50',
-    iconColor: 'text-pink-600',
-    badgeColor: 'bg-pink-100 text-pink-700',
-  },
-  {
-    id: 4,
-    name: 'Dermatología',
-    icon: Sparkles,
-    description: 'Tratamiento de enfermedades de la piel, cabello y uñas.',
-    availableSlots: 6,
-    color: 'purple',
-    bgColor: 'bg-purple-50',
-    iconColor: 'text-purple-600',
-    badgeColor: 'bg-purple-100 text-purple-700',
-  },
-  {
-    id: 5,
-    name: 'Ginecología',
-    icon: Users,
-    description: 'Salud reproductiva y atención integral para la mujer.',
-    availableSlots: 10,
-    color: 'teal',
-    bgColor: 'bg-teal-50',
-    iconColor: 'text-teal-600',
-    badgeColor: 'bg-teal-100 text-teal-700',
-  },
-  {
-    id: 6,
-    name: 'Traumatología',
-    icon: Bone,
-    description: 'Tratamiento de lesiones del sistema musculoesquelético.',
-    availableSlots: 7,
-    color: 'orange',
-    bgColor: 'bg-orange-50',
-    iconColor: 'text-orange-600',
-    badgeColor: 'bg-orange-100 text-orange-700',
-  },
-  {
-    id: 7,
-    name: 'Psicología',
-    icon: Brain,
-    description: 'Apoyo profesional para salud mental y bienestar emocional.',
-    availableSlots: 9,
-    color: 'indigo',
-    bgColor: 'bg-indigo-50',
-    iconColor: 'text-indigo-600',
-    badgeColor: 'bg-indigo-100 text-indigo-700',
-  },
-  {
-    id: 8,
-    name: 'Laboratorio',
-    icon: FlaskConical,
-    description: 'Análisis clínicos y estudios de laboratorio.',
-    availableSlots: 20,
-    color: 'cyan',
-    bgColor: 'bg-cyan-50',
-    iconColor: 'text-cyan-600',
-    badgeColor: 'bg-cyan-100 text-cyan-700',
-  },
-];
-
 export default function MedicalAreas() {
   const navigate = useNavigate();
+  const { data: medicalAreas = [], isLoading } = useAreas();
+
+  if (isLoading) {
+    return <div className="p-6 text-center text-gray-500">Cargando áreas médicas...</div>;
+  }
 
   return (
     <div className="space-y-6">
@@ -128,7 +36,7 @@ export default function MedicalAreas() {
             >
               {/* Icon */}
               <div className={`w-14 h-14 rounded-xl ${area.bgColor} flex items-center justify-center mb-4 group-hover:scale-110 transition-transform`}>
-                <Icon className={`w-7 h-7 ${area.iconColor}`} />
+                {Icon && <Icon className={`w-7 h-7 ${area.iconColor}`} />}
               </div>
 
               {/* Area Name */}

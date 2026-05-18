@@ -2,9 +2,17 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Eye, EyeOff, Mail, Lock } from "lucide-react";
 import { Logo } from "../components/ui/Logo";
+import { useAuth } from "../features/auth/hooks/useAuth";
+import { useLogin } from "../features/auth/api/auth.hooks";
+import { appConfig } from "../app/config";
+import { getRedirectPathByRole } from "../features/auth/utils/auth-redirect";
+import type { AuthSession } from "../features/auth/types/auth.types";
 
 export default function Login() {
     const navigate = useNavigate();
+    const { login: authenticate } = useAuth();
+    const loginMutation = useLogin();
+
     const [showPassword, setShowPassword] = useState(false);
     const [email, setEmail] = useState('');
     const [password, setPassword] = useState('');
@@ -12,20 +20,57 @@ export default function Login() {
     const [isLoading, setIsLoading] = useState(false);
     const [error, setError] = useState('');
 
-    // Simulación de login (punto de futuro consumo de API)
-    const handleSubmit = async (e: React.SubmitEvent) => {
+    const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (!email.trim() || !password.trim()) {
+            setError("Por favor ingresa tus credenciales");
+            return;
+        }
+
         setError('');
         setIsLoading(true);
 
-        setTimeout(() => {
-            setIsLoading(false);
-            if (email && password) {
-                navigate("/dashboard");
-            } else {
-                setError("Por favor ingresa tus credenciales")
+        if (appConfig.useMocks) {
+            setTimeout(() => {
+                setIsLoading(false);
+                let role: "ADMIN" | "RECEPTIONIST" | "PATIENT" = "PATIENT";
+                let fullName = "Mariana García López";
+                if (email.toLowerCase().includes("admin")) {
+                    role = "ADMIN";
+                    fullName = "Administrador ClinSync";
+                } else if (email.toLowerCase().includes("recepcion")) {
+                    role = "RECEPTIONIST";
+                    fullName = "Recepcionista ClinSync";
+                }
+
+                const mockSession: AuthSession = {
+                    token: "mock-jwt-token-xyz",
+                    user: {
+                        id: "mock-user-123",
+                        email: email.toLowerCase(),
+                        role,
+                        name: fullName,
+                    }
+                };
+
+                authenticate(mockSession);
+                const redirectPath = getRedirectPathByRole(role);
+                navigate(redirectPath);
+            }, 1000);
+        } else {
+            try {
+                const session = await loginMutation.mutateAsync({
+                    email: email.trim(),
+                    password: password.trim(),
+                });
+                setIsLoading(false);
+                const redirectPath = getRedirectPathByRole(session.user.role);
+                navigate(redirectPath);
+            } catch (err: any) {
+                setIsLoading(false);
+                setError(err.response?.data?.message || err.message || "Credenciales incorrectas");
             }
-        }, 1000);
+        }
     };
 
     return (

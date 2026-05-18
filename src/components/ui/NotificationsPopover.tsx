@@ -1,14 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, Calendar, CreditCard, Activity, CheckCircle } from 'lucide-react';
 
-/* 
-  INSTRUCCIONES PARA EL FUTURO (Integración Real):
-  1. Reemplazar `mockNotifications` con un estado `notifications` alimentado por un custom hook (ej: `useNotifications()`).
-  2. Implementar WebSockets (ej: Socket.io, SignalR) o Polling para recibir notificaciones en tiempo real desde el backend.
-  3. Al hacer clic en "Marcar todas como leídas", disparar una mutación a la API (ej: `PUT /api/notifications/read-all`) y actualizar el estado local.
-  4. Al hacer clic en una notificación individual, enviarla al backend para marcarla como leída y navegar a la ruta correspondiente si tiene una.
-*/
-
 export type NotificationType = 'appointment' | 'payment' | 'system';
 
 export interface Notification {
@@ -19,33 +11,6 @@ export interface Notification {
   date: string;
   read: boolean;
 }
-
-const mockNotifications: Notification[] = [
-  {
-    id: '1',
-    type: 'appointment',
-    title: 'Cita Confirmada',
-    message: 'Tu cita para Cardiología el 24 de Mayo ha sido confirmada.',
-    date: 'Hace 2 horas',
-    read: false,
-  },
-  {
-    id: '2',
-    type: 'payment',
-    title: 'Pago Recibido',
-    message: 'Hemos procesado el pago de S/. 120 por tu consulta.',
-    date: 'Hace 5 horas',
-    read: false,
-  },
-  {
-    id: '3',
-    type: 'system',
-    title: 'Bienvenido a ClinSync',
-    message: 'Completa tu perfil para aprovechar al máximo la plataforma.',
-    date: 'Hace 2 días',
-    read: true,
-  },
-];
 
 const getIconForType = (type: NotificationType) => {
   switch (type) {
@@ -62,11 +27,91 @@ const getIconForType = (type: NotificationType) => {
 
 export function NotificationsPopover() {
   const [isOpen, setIsOpen] = useState(false);
-  const [notifications, setNotifications] = useState<Notification[]>(mockNotifications);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
   const popoverRef = useRef<HTMLDivElement>(null);
 
-  const unreadCount = notifications.filter((n) => !n.read).length;
+  const userStr = localStorage.getItem('clinsync_auth_user');
+  const user = userStr ? JSON.parse(userStr) : null;
+  const storageKey = user ? `clinsync_notifications_${user.id}` : 'clinsync_notifications_guest';
 
+  // Load notifications from localStorage or seed initial ones dynamically
+  useEffect(() => {
+    const saved = localStorage.getItem(storageKey);
+    if (saved) {
+      setNotifications(JSON.parse(saved));
+    } else if (user) {
+      const isAdmin = user.role === 'ADMIN' || user.role === 'RECEPTIONIST';
+      const initial: Notification[] = isAdmin
+        ? [
+            {
+              id: '1',
+              type: 'system',
+              title: 'Panel Administrativo Listo',
+              message: `¡Hola ${user.fullName || user.email.split('@')[0]}! El panel de control ClinSync está en línea y conectado a PostgreSQL.`,
+              date: 'Hace un momento',
+              read: false,
+            },
+            {
+              id: '2',
+              type: 'appointment',
+              title: 'Sincronización Completa',
+              message: 'Los módulos de citas y horarios están completamente sincronizados con la API backend.',
+              date: 'Hace 10 minutos',
+              read: true,
+            },
+          ]
+        : [
+            {
+              id: '1',
+              type: 'system',
+              title: '¡Bienvenido a ClinSync!',
+              message: `Hola ${user.firstName || 'Paciente'}, gracias por registrarte. Explora las especialidades médicas para reservar tu cita.`,
+              date: 'Hace un momento',
+              read: false,
+            },
+            {
+              id: '2',
+              type: 'appointment',
+              title: 'Citas al Instante',
+              message: 'Reserva tus citas con médicos especializados en tiempo real y recibe confirmación al instante.',
+              date: 'Hace 5 minutos',
+              read: true,
+            },
+          ];
+      setNotifications(initial);
+      localStorage.setItem(storageKey, JSON.stringify(initial));
+    }
+  }, [storageKey, userStr]);
+
+  // Helper to save notifications
+  const saveNotifications = (newNotifs: Notification[]) => {
+    setNotifications(newNotifs);
+    localStorage.setItem(storageKey, JSON.stringify(newNotifs));
+  };
+
+  // Listen for custom notification events from anywhere in the app
+  useEffect(() => {
+    const handleNewNotification = (event: Event) => {
+      const customEvent = event as CustomEvent<{ title: string; message: string; type: NotificationType }>;
+      const { title, message, type } = customEvent.detail;
+      const newNotif: Notification = {
+        id: Date.now().toString(),
+        type,
+        title,
+        message,
+        date: 'Hace un momento',
+        read: false,
+      };
+      saveNotifications([newNotif, ...notifications]);
+    };
+
+    window.addEventListener('clinsync_new_notification', handleNewNotification);
+    return () => {
+      window.removeEventListener('clinsync_new_notification', handleNewNotification);
+    };
+  }, [notifications, storageKey]);
+
+  // Click outside to close
   useEffect(() => {
     function handleClickOutside(event: MouseEvent) {
       if (popoverRef.current && !popoverRef.current.contains(event.target as Node)) {
@@ -79,12 +124,14 @@ export function NotificationsPopover() {
     };
   }, []);
 
+  const unreadCount = notifications.filter((n) => !n.read).length;
+
   const markAllAsRead = () => {
-    setNotifications(notifications.map((n) => ({ ...n, read: true })));
+    saveNotifications(notifications.map((n) => ({ ...n, read: true })));
   };
 
   const markAsRead = (id: string) => {
-    setNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
+    saveNotifications(notifications.map((n) => (n.id === id ? { ...n, read: true } : n)));
   };
 
   return (

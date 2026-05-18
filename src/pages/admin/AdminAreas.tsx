@@ -1,61 +1,27 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Plus, Edit, Power, X } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAdminAreas } from '../../features/areas/api/area.hooks';
 
 interface MedicalArea {
-  id: string;
+  id: string | number;
   name: string;
   description: string;
-  isActive: boolean;
-  associatedDoctors: number;
-  availableSchedules: number;
+  isActive?: boolean;
+  associatedDoctors?: number;
+  availableSchedules?: number;
 }
 
-const mockAreas: MedicalArea[] = [
-  {
-    id: '1',
-    name: 'Medicina General',
-    description: 'Consultas médicas generales para diagnóstico y tratamiento.',
-    isActive: true,
-    associatedDoctors: 3,
-    availableSchedules: 12,
-  },
-  {
-    id: '2',
-    name: 'Cardiología',
-    description: 'Especialidad en enfermedades del corazón y sistema cardiovascular.',
-    isActive: true,
-    associatedDoctors: 2,
-    availableSchedules: 8,
-  },
-  {
-    id: '3',
-    name: 'Pediatría',
-    description: 'Atención médica especializada para bebés, niños y adolescentes.',
-    isActive: true,
-    associatedDoctors: 2,
-    availableSchedules: 15,
-  },
-  {
-    id: '4',
-    name: 'Dermatología',
-    description: 'Tratamiento de enfermedades de la piel, cabello y uñas.',
-    isActive: true,
-    associatedDoctors: 1,
-    availableSchedules: 6,
-  },
-  {
-    id: '5',
-    name: 'Traumatología',
-    description: 'Tratamiento de lesiones del sistema musculoesquelético.',
-    isActive: false,
-    associatedDoctors: 0,
-    availableSchedules: 0,
-  },
-];
-
 export default function AdminAreas() {
-  const [areas, setAreas] = useState(mockAreas);
+  const { data: fetchedAreas = [] } = useAdminAreas();
+  const [areas, setAreas] = useState<MedicalArea[]>([]);
+
+  useEffect(() => {
+    if (fetchedAreas.length > 0) {
+      setAreas(fetchedAreas as MedicalArea[]);
+    }
+  }, [fetchedAreas]);
+
   const [showForm, setShowForm] = useState(false);
   const [editingArea, setEditingArea] = useState<MedicalArea | null>(null);
   const [formData, setFormData] = useState({
@@ -70,7 +36,7 @@ export default function AdminAreas() {
       setFormData({
         name: area.name,
         description: area.description,
-        isActive: area.isActive,
+        isActive: area.isActive ?? true,
       });
     } else {
       setEditingArea(null);
@@ -107,7 +73,7 @@ export default function AdminAreas() {
     closeForm();
   };
 
-  const toggleAreaStatus = (areaId: string) => {
+  const toggleAreaStatus = (areaId: string | number) => {
     setAreas(areas.map(area =>
       area.id === areaId ? { ...area, isActive: !area.isActive } : area
     ));

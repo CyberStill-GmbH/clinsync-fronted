@@ -2,6 +2,7 @@ import { useState } from 'react';
 import { Outlet, useNavigate, useLocation } from 'react-router';
 import { NotificationsPopover } from '../components/ui/NotificationsPopover';
 import { Logo } from '../components/ui/Logo';
+import { useAuth } from '../features/auth/hooks/useAuth';
 import {
   Home,
   CalendarPlus,
@@ -29,6 +30,7 @@ const menuItems = [
 export default function DashboardLayout() {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
@@ -81,7 +83,7 @@ export default function DashboardLayout() {
                 <User className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1 text-left">
-                <p className="font-medium text-[#0F172A]">UNI</p>
+                <p className="font-medium text-[#0F172A]">{user?.name || user?.email?.split('@')[0] || 'Paciente'}</p>
                 <p className="text-sm text-[#64748B]">Ver perfil</p>
               </div>
             </button>
@@ -155,7 +157,7 @@ export default function DashboardLayout() {
                 <User className="w-5 h-5 text-white" />
               </div>
               <div className="flex-1">
-                <p className="font-medium text-[#0F172A]">UNI</p>
+                <p className="font-medium text-[#0F172A]">{user?.name || user?.email?.split('@')[0] || 'Paciente'}</p>
                 <p className="text-sm text-[#64748B]">Paciente</p>
               </div>
             </div>
@@ -184,7 +186,7 @@ export default function DashboardLayout() {
                 <Menu className="w-6 h-6" />
               </button>
               <div>
-                <h1 className="text-xl font-bold text-[#0F172A]">Hola, UNI</h1>
+                <h1 className="text-xl font-bold text-[#0F172A]">Hola, {user?.name || user?.email?.split('@')[0] || 'Paciente'}</h1>
                 <p className="text-sm text-[#64748B] hidden sm:block">
                   Gestiona tus citas y pagos desde tu portal.
                 </p>

@@ -17,6 +17,11 @@ import {
   User,
   CheckCircle2
 } from 'lucide-react';
+import { useAuth } from '@/features/auth/hooks/useAuth';
+import { useAreas } from '@/features/areas/api/area.hooks';
+import { useCreateAppointment } from '@/features/appointments/api/appointment.hooks';
+import { useSchedulesByArea } from '@/features/schedules/api/schedule.hooks';
+import { appConfig } from '@/app/config';
 
 const medicalAreas = [
   { name: 'Medicina General', icon: Stethoscope, color: 'blue' },
@@ -35,12 +40,34 @@ export default function BookAppointment() {
   const navigate = useNavigate();
   const location = useLocation();
 
-  const [currentStep, setCurrentStep] = useState(1);
+  const { user } = useAuth();
+  const { data: areas = [] } = useAreas();
+  const createAppointmentMutation = useCreateAppointment();
+
+  const [currentStep, setCurrentStep] = useState(location.state ? 3 : 1);
   const [selectedArea, setSelectedArea] = useState(location.state?.area || '');
   const [selectedDate, setSelectedDate] = useState(location.state?.date || new Date(2026, 4, 24));
   const [selectedTime, setSelectedTime] = useState(location.state?.time || '');
+  const [scheduleId, setScheduleId] = useState(location.state?.scheduleId || '');
+  const [doctor, setDoctor] = useState(location.state?.doctor || '');
   const [reason, setReason] = useState('');
   const [showSuccess, setShowSuccess] = useState(false);
+
+  // Dynamic schedules fetch based on selected area
+  const currentAreaObj = areas.find(a => a.name === selectedArea);
+  const areaId = currentAreaObj?.id !== undefined ? String(currentAreaObj.id) : '';
+  const { data: schedules = [] } = useSchedulesByArea(areaId);
+
+  // Formatted date string in local timezone YYYY-MM-DD
+  const year = selectedDate.getFullYear();
+  const monthVal = String(selectedDate.getMonth() + 1).padStart(2, '0');
+  const dayVal = String(selectedDate.getDate()).padStart(2, '0');
+  const activeDateString = `${year}-${monthVal}-${dayVal}`;
+
+  // Filter available schedules for the active date
+  const activeSchedules = schedules.filter(
+    (s: any) => s.date === activeDateString && (s.status === 'Disponible' || s.status === 'AVAILABLE')
+  );
 
   const steps = [
     { number: 1, title: 'Área' },
@@ -57,8 +84,43 @@ export default function BookAppointment() {
     if (currentStep > 1) setCurrentStep(currentStep - 1);
   };
 
-  const confirmAppointment = () => {
-    setShowSuccess(true);
+  const confirmAppointment = async () => {
+    const dispatchNotif = () => {
+      window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
+        detail: {
+          title: 'Cita Registrada',
+          message: `Tu cita de ${selectedArea} para el ${selectedDate.toLocaleDateString('es-ES')} a las ${selectedTime} ha sido registrada y está pendiente de validación.`,
+          type: 'appointment'
+        }
+      }));
+    };
+
+    if (appConfig.useMocks) {
+      setShowSuccess(true);
+      dispatchNotif();
+      return;
+    }
+    try {
+      const selectedAreaObj = areas.find(a => a.name === selectedArea);
+      if (!selectedAreaObj) {
+        alert("Especialidad médica no encontrada.");
+        return;
+      }
+      if (!scheduleId) {
+        alert("Horario no seleccionado. Por favor, vuelva al calendario.");
+        return;
+      }
+      await createAppointmentMutation.mutateAsync({
+        areaId: selectedAreaObj.id,
+        scheduleId: scheduleId,
+        reason: reason,
+      });
+      setShowSuccess(true);
+      dispatchNotif();
+    } catch (err) {
+      console.error(err);
+      alert("Error al agendar la cita. Por favor, verifique disponibilidad.");
+    }
   };
 
   const canProceed = () => {
@@ -196,19 +258,26 @@ export default function BookAppointment() {
             </h2>
             <div className="space-y-6">
               <div>
-                <label className="block text-sm font-medium text-[#0F172A] mb-2">
-                  Fecha seleccionada
+                <label htmlFor="appointment-date" className="block text-sm font-medium text-[#0F172A] mb-2">
+                  Selecciona una fecha
                 </label>
-                <div className="flex items-center gap-3 p-4 bg-[#F8FAFC] rounded-lg border border-[#E2E8F0]">
+                <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-[#E2E8F0] focus-within:ring-2 focus-within:ring-[#2563EB]/50 focus-within:border-[#2563EB]">
                   <Calendar className="w-5 h-5 text-[#2563EB]" />
-                  <span className="font-medium text-[#0F172A]">
-                    {selectedDate.toLocaleDateString('es-ES', {
-                      weekday: 'long',
-                      year: 'numeric',
-                      month: 'long',
-                      day: 'numeric',
-                    })}
-                  </span>
+                  <input
+                    id="appointment-date"
+                    type="date"
+                    value={activeDateString}
+                    onChange={(e) => {
+                      if (e.target.value) {
+                        const [y, m, d] = e.target.value.split('-').map(Number);
+                        setSelectedDate(new Date(y, m - 1, d));
+                        // Reset time slot selection when date changes
+                        setSelectedTime('');
+                        setScheduleId('');
+                      }
+                    }}
+                    className="w-full focus:outline-none font-medium text-[#0F172A]"
+                  />
                 </div>
               </div>
 
@@ -216,20 +285,57 @@ export default function BookAppointment() {
                 <label className="block text-sm font-medium text-[#0F172A] mb-3">
                   Selecciona un horario
                 </label>
-                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                  {timeSlots.map((time) => (
-                    <button
-                      key={time}
-                      onClick={() => setSelectedTime(time)}
-                      className={`py-3 px-4 rounded-lg font-medium transition-all ${
-                        selectedTime === time
-                          ? 'bg-[#2563EB] text-white ring-2 ring-[#2563EB] ring-offset-2'
-                          : 'bg-[#F8FAFC] text-[#0F172A] hover:bg-[#E2E8F0] border border-[#E2E8F0]'
-                      }`}
-                    >
-                      {time}
-                    </button>
-                  ))}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                  {appConfig.useMocks ? (
+                    timeSlots.map((time) => (
+                      <button
+                        type="button"
+                        key={time}
+                        onClick={() => {
+                          setSelectedTime(time);
+                          setScheduleId('mock-schedule-id');
+                          setDoctor('Dr. Carlos Méndez');
+                        }}
+                        className={`py-3 px-4 rounded-lg font-medium transition-all ${
+                          selectedTime === time
+                            ? 'bg-[#2563EB] text-white ring-2 ring-[#2563EB] ring-offset-2'
+                            : 'bg-[#F8FAFC] text-[#0F172A] hover:bg-[#E2E8F0] border border-[#E2E8F0]'
+                        }`}
+                      >
+                        {time}
+                      </button>
+                    ))
+                  ) : activeSchedules.length > 0 ? (
+                    activeSchedules.map((s: any) => {
+                      const timeStr = `${s.startTime} - ${s.endTime}`;
+                      const docName = s.doctor?.fullName || s.doctor || 'Médico Asignado';
+                      return (
+                        <button
+                          type="button"
+                          key={s.id}
+                          onClick={() => {
+                            setSelectedTime(timeStr);
+                            setScheduleId(s.id);
+                            setDoctor(docName);
+                          }}
+                          className={`p-4 rounded-lg font-medium transition-all text-left border ${
+                            selectedTime === timeStr
+                              ? 'bg-[#2563EB] text-white border-[#2563EB] ring-2 ring-[#2563EB] ring-offset-2'
+                              : 'bg-[#F8FAFC] text-[#0F172A] hover:bg-[#E2E8F0] border-[#E2E8F0]'
+                          }`}
+                        >
+                          <span className="block text-base font-bold">{timeStr}</span>
+                          <span className={`block text-xs mt-1 ${selectedTime === timeStr ? 'text-white/80' : 'text-[#64748B]'}`}>
+                            👨‍⚕️ {docName}
+                          </span>
+                        </button>
+                      );
+                    })
+                  ) : (
+                    <div className="col-span-full py-6 text-center text-[#64748B] border border-dashed border-[#E2E8F0] rounded-xl">
+                      No hay horarios disponibles para esta fecha. Seleccione otra fecha o área.
+                    </div>
+                  )}
                 </div>
               </div>
             </div>
@@ -269,8 +375,12 @@ export default function BookAppointment() {
                     <label className="text-sm text-blue-900 font-medium mb-1 block">
                       Datos del paciente
                     </label>
-                    <p className="text-sm text-blue-800">Mariana García López</p>
-                    <p className="text-sm text-blue-700">DNI: 12345678</p>
+                    <p className="text-sm text-blue-800">{user?.name || user?.email?.split('@')[0] || 'Paciente'}</p>
+                    <p className="text-sm text-blue-700">
+                      {((user as any)?.patient?.dni || (user as any)?.dni) 
+                        ? `DNI: ${(user as any)?.patient?.dni || (user as any)?.dni}` 
+                        : `Email: ${user?.email}`}
+                    </p>
                   </div>
                 </div>
               </div>
@@ -330,9 +440,15 @@ export default function BookAppointment() {
                     <label className="text-sm text-[#64748B] mb-1 block">Paciente</label>
                     <div className="flex items-center gap-2">
                       <User className="w-5 h-5 text-[#2563EB]" />
-                      <p className="font-semibold text-[#0F172A]">Mariana García</p>
+                      <p className="font-semibold text-[#0F172A]">{user?.name || user?.email?.split('@')[0] || 'Paciente'}</p>
                     </div>
                   </div>
+                  {doctor && (
+                    <div>
+                      <label className="text-sm text-[#64748B] mb-1 block">Médico asignado</label>
+                      <p className="font-semibold text-[#0F172A]">{doctor}</p>
+                    </div>
+                  )}
                 </div>
                 {reason && (
                   <div className="mt-4 pt-4 border-t border-[#E2E8F0]">

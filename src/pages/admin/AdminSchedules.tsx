@@ -1,6 +1,10 @@
 import { useState } from 'react';
 import { Plus, X, Filter } from 'lucide-react';
 import { toast } from 'sonner';
+import { useAdminSchedules, useCreateSchedule } from '../../features/schedules/api/schedule.hooks';
+import { useAreas } from '../../features/areas/api/area.hooks';
+import { useAdminDoctors } from '../../features/doctors/api/doctor.hooks';
+import { appConfig } from '../../app/config';
 
 interface Schedule {
   id: string;
@@ -9,7 +13,7 @@ interface Schedule {
   date: string;
   startTime: string;
   endTime: string;
-  status: 'Disponible' | 'Ocupado' | 'Inactivo';
+  status: string;
   assignedAppointments: number;
 }
 
@@ -65,7 +69,31 @@ const mockSchedules: Schedule[] = [
 ];
 
 export default function AdminSchedules() {
-  const [schedules] = useState(mockSchedules);
+  const { data: dbSchedules = [] } = useAdminSchedules();
+  const { data: areas = [] } = useAreas();
+  const { data: dbDoctors = [] } = useAdminDoctors();
+  const createScheduleMutation = useCreateSchedule();
+
+  const schedules = (dbSchedules.length > 0 ? dbSchedules : mockSchedules).map((s: any) => {
+    const areaName = typeof s.area === 'object' && s.area ? s.area.name : s.area;
+    const docName = typeof s.doctor === 'object' && s.doctor ? s.doctor.fullName : s.doctor;
+    const dateStr = s.date instanceof Date 
+      ? s.date.toISOString().split('T')[0] 
+      : (typeof s.date === 'string' && s.date.includes('T') ? s.date.split('T')[0] : s.date);
+    const apptsCount = Array.isArray(s.appointments) ? s.appointments.length : (s.assignedAppointments || 0);
+
+    return {
+      id: s.id,
+      area: areaName || 'Especialidad',
+      doctor: docName || 'No asignado',
+      date: dateStr,
+      startTime: s.startTime,
+      endTime: s.endTime,
+      status: s.status,
+      assignedAppointments: apptsCount,
+    };
+  });
+
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState({
     area: '',
@@ -102,31 +130,62 @@ export default function AdminSchedules() {
     });
   };
 
-  const handleSubmit = () => {
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+
     if (!formData.area || !formData.date || !formData.startTime || !formData.endTime) {
       toast.error('Completa todos los campos requeridos');
       return;
     }
 
-    toast.success('Horario creado correctamente');
-    closeForm();
+    if (appConfig.useMocks) {
+      toast.success('Horario creado correctamente');
+      closeForm();
+      return;
+    }
+
+    try {
+      const selectedAreaObj = areas.find(a => a.name === formData.area);
+      if (!selectedAreaObj) {
+        toast.error('Especialidad no válida');
+        return;
+      }
+
+      await createScheduleMutation.mutateAsync({
+        areaId: selectedAreaObj.id,
+        date: formData.date,
+        startTime: formData.startTime,
+        endTime: formData.endTime,
+        doctorId: formData.doctor || undefined,
+      });
+
+      toast.success('Horario creado correctamente');
+      closeForm();
+    } catch (err: any) {
+      toast.error(err.message || 'Error al crear el horario');
+    }
   };
 
   const getStatusBadge = (status: string) => {
-    const config: Record<string, { bg: string; text: string }> = {
-      'Disponible': { bg: 'bg-green-100', text: 'text-green-700' },
-      'Ocupado': { bg: 'bg-amber-100', text: 'text-amber-700' },
-      'Inactivo': { bg: 'bg-gray-100', text: 'text-gray-700' },
+    const config: Record<string, { bg: string; text: string; label: string }> = {
+      'Disponible': { bg: 'bg-green-100', text: 'text-green-700', label: 'Disponible' },
+      'AVAILABLE': { bg: 'bg-green-100', text: 'text-green-700', label: 'Disponible' },
+      'Ocupado': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Ocupado' },
+      'OCCUPIED': { bg: 'bg-amber-100', text: 'text-amber-700', label: 'Ocupado' },
+      'Inactivo': { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Inactivo' },
+      'INACTIVE': { bg: 'bg-gray-100', text: 'text-gray-700', label: 'Inactivo' },
     };
 
-    const style = config[status];
+    const style = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700', label: status };
 
     return (
       <span className={`px-3 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
-        {status}
+        {style.label}
       </span>
     );
   };
+
+
 
   return (
     <div className="space-y-6">
@@ -298,11 +357,21 @@ export default function AdminSchedules() {
                   className="w-full px-4 py-2 rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                 >
                   <option value="">Seleccionar área</option>
-                  <option value="Medicina General">Medicina General</option>
-                  <option value="Cardiología">Cardiología</option>
-                  <option value="Pediatría">Pediatría</option>
-                  <option value="Dermatología">Dermatología</option>
-                  <option value="Traumatología">Traumatología</option>
+                  {appConfig.useMocks ? (
+                    <>
+                      <option value="Medicina General">Medicina General</option>
+                      <option value="Cardiología">Cardiología</option>
+                      <option value="Pediatría">Pediatría</option>
+                      <option value="Dermatología">Dermatología</option>
+                      <option value="Traumatología">Traumatología</option>
+                    </>
+                  ) : (
+                    areas.map((area: any) => (
+                      <option key={area.id} value={area.name}>
+                        {area.name}
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 
@@ -316,9 +385,19 @@ export default function AdminSchedules() {
                   className="w-full px-4 py-2 rounded-lg border border-[#E2E8F0] focus:outline-none focus:ring-2 focus:ring-[#2563EB]"
                 >
                   <option value="">Sin médico específico</option>
-                  <option value="Dr. Carlos Méndez">Dr. Carlos Méndez</option>
-                  <option value="Dra. Ana Torres">Dra. Ana Torres</option>
-                  <option value="Dr. Roberto Silva">Dr. Roberto Silva</option>
+                  {appConfig.useMocks ? (
+                    <>
+                      <option value="Dr. Carlos Méndez">Dr. Carlos Méndez</option>
+                      <option value="Dra. Ana Torres">Dra. Ana Torres</option>
+                      <option value="Dr. Roberto Silva">Dr. Roberto Silva</option>
+                    </>
+                  ) : (
+                    dbDoctors.map((doc: any) => (
+                      <option key={doc.id} value={doc.id}>
+                        {doc.fullName} ({doc.area?.name || 'Médico'})
+                      </option>
+                    ))
+                  )}
                 </select>
               </div>
 

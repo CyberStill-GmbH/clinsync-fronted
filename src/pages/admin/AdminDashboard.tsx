@@ -10,127 +10,25 @@ import {
   UserCog,
   ArrowRight
 } from 'lucide-react';
-
-const summaryCards = [
-  {
-    id: 1,
-    title: 'Citas de hoy',
-    value: '24',
-    subtitle: '8 pendientes de validación',
-    icon: Calendar,
-    color: 'blue',
-    bgColor: 'bg-blue-50',
-    iconColor: 'text-blue-600',
-  },
-  {
-    id: 2,
-    title: 'Pendientes',
-    value: '6',
-    subtitle: 'Requieren revisión',
-    icon: AlertCircle,
-    color: 'amber',
-    bgColor: 'bg-amber-50',
-    iconColor: 'text-amber-600',
-  },
-  {
-    id: 3,
-    title: 'Validadas',
-    value: '15',
-    subtitle: 'Listas para atención',
-    icon: CheckCircle,
-    color: 'green',
-    bgColor: 'bg-green-50',
-    iconColor: 'text-green-600',
-  },
-  {
-    id: 4,
-    title: 'No asistió',
-    value: '3',
-    subtitle: 'Registradas hoy',
-    icon: XCircle,
-    color: 'red',
-    bgColor: 'bg-red-50',
-    iconColor: 'text-red-600',
-  },
-  {
-    id: 5,
-    title: 'Horarios disponibles',
-    value: '42',
-    subtitle: 'Para esta semana',
-    icon: Clock,
-    color: 'purple',
-    bgColor: 'bg-purple-50',
-    iconColor: 'text-purple-600',
-  },
-];
-
-const upcomingAppointments = [
-  {
-    id: '1',
-    code: 'APT-2026-001',
-    patient: 'Mariana García López',
-    dni: '12345678',
-    area: 'Cardiología',
-    doctor: 'Dr. Carlos Méndez',
-    date: 'Hoy',
-    time: '10:30 AM',
-    status: 'Pendiente',
-  },
-  {
-    id: '2',
-    code: 'APT-2026-002',
-    patient: 'José Rodríguez Silva',
-    dni: '87654321',
-    area: 'Traumatología',
-    doctor: 'Dr. Roberto Silva',
-    date: 'Hoy',
-    time: '11:00 AM',
-    status: 'Validada',
-  },
-  {
-    id: '3',
-    code: 'APT-2026-003',
-    patient: 'Ana Torres Morales',
-    dni: '45678912',
-    area: 'Dermatología',
-    date: 'Hoy',
-    time: '02:00 PM',
-    status: 'Confirmada',
-  },
-  {
-    id: '4',
-    code: 'APT-2026-004',
-    patient: 'Carlos Mendoza Ruiz',
-    dni: '78945612',
-    area: 'Medicina General',
-    doctor: 'Dra. Ana Torres',
-    date: 'Hoy',
-    time: '03:30 PM',
-    status: 'Pendiente',
-  },
-  {
-    id: '5',
-    code: 'APT-2026-005',
-    patient: 'Lucía Fernández Castro',
-    dni: '32165498',
-    area: 'Pediatría',
-    date: 'Hoy',
-    time: '04:00 PM',
-    status: 'Validada',
-  },
-];
+import { useAdminDashboard } from '@/features/admin/api/admin.hooks';
+import { useAdminAppointments } from '@/features/appointments/api/appointment.hooks';
+import { appConfig } from '@/app/config';
 
 const getStatusBadge = (status: string) => {
   const config: Record<string, { bg: string; text: string }> = {
     'Pendiente': { bg: 'bg-blue-100', text: 'text-blue-700' },
     'Confirmada': { bg: 'bg-green-100', text: 'text-green-700' },
-    'Validada': { bg: 'bg-teal-100', text: 'text-teal-700' },
+    'Validada por recepción': { bg: 'bg-teal-100', text: 'text-teal-700' },
+    'Reprogramada': { bg: 'bg-purple-100', text: 'text-purple-700' },
+    'Atendida': { bg: 'bg-emerald-100', text: 'text-emerald-700' },
+    'No asistió': { bg: 'bg-red-100', text: 'text-red-700' },
+    'Cancelada por recepción': { bg: 'bg-gray-100', text: 'text-gray-700' },
   };
 
   const style = config[status] || { bg: 'bg-gray-100', text: 'text-gray-700' };
 
   return (
-    <span className={`px-3 py-1 rounded-full text-xs font-medium ${style.bg} ${style.text}`}>
+    <span className={`px-3 py-1 rounded-full text-xs font-medium whitespace-nowrap ${style.bg} ${style.text}`}>
       {status}
     </span>
   );
@@ -138,6 +36,133 @@ const getStatusBadge = (status: string) => {
 
 export default function AdminDashboard() {
   const navigate = useNavigate();
+
+  const { data: dashboardStats } = useAdminDashboard();
+  const { data: allAdminAppointments = [] } = useAdminAppointments();
+
+  const todayVal = dashboardStats?.todayAppointments ?? 0;
+  const pendingVal = dashboardStats?.pendingAppointments ?? 0;
+  const validatedVal = dashboardStats?.validatedAppointments ?? 0;
+  const noShowVal = dashboardStats?.noShowAppointments ?? 0;
+  const availableVal = dashboardStats?.availableSchedules ?? 0;
+
+  const summaryCards = [
+    {
+      id: 1,
+      title: 'Citas de hoy',
+      value: String(todayVal),
+      subtitle: `${pendingVal} pendientes de validación`,
+      icon: Calendar,
+      color: 'blue',
+      bgColor: 'bg-blue-50',
+      iconColor: 'text-blue-600',
+    },
+    {
+      id: 2,
+      title: 'Pendientes',
+      value: String(pendingVal),
+      subtitle: 'Requieren revisión',
+      icon: AlertCircle,
+      color: 'amber',
+      bgColor: 'bg-amber-50',
+      iconColor: 'text-amber-600',
+    },
+    {
+      id: 3,
+      title: 'Validadas',
+      value: String(validatedVal),
+      subtitle: 'Listas para atención',
+      icon: CheckCircle,
+      color: 'green',
+      bgColor: 'bg-green-50',
+      iconColor: 'text-green-600',
+    },
+    {
+      id: 4,
+      title: 'No asistió',
+      value: String(noShowVal),
+      subtitle: 'Registradas',
+      icon: XCircle,
+      color: 'red',
+      bgColor: 'bg-red-50',
+      iconColor: 'text-red-600',
+    },
+    {
+      id: 5,
+      title: 'Horarios disponibles',
+      value: String(availableVal),
+      subtitle: 'Activos para citas',
+      icon: Clock,
+      color: 'purple',
+      bgColor: 'bg-purple-50',
+      iconColor: 'text-purple-600',
+    },
+  ];
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayAppointments = allAdminAppointments.filter(apt => 
+    apt.date === todayStr && ['Pendiente', 'Confirmada', 'Validada por recepción', 'Reprogramada'].includes(apt.status)
+  );
+
+  const mockUpcomingAppointments = [
+    {
+      id: '1',
+      code: 'APT-2026-001',
+      patientName: 'Mariana García López',
+      patientDni: '12345678',
+      area: 'Cardiología',
+      doctor: 'Dr. Carlos Méndez',
+      date: 'Hoy',
+      time: '10:30 AM',
+      status: 'Pendiente',
+    },
+    {
+      id: '2',
+      code: 'APT-2026-002',
+      patientName: 'José Rodríguez Silva',
+      patientDni: '87654321',
+      area: 'Traumatología',
+      doctor: 'Dr. Roberto Silva',
+      date: 'Hoy',
+      time: '11:00 AM',
+      status: 'Validada por recepción',
+    },
+    {
+      id: '3',
+      code: 'APT-2026-003',
+      patientName: 'Ana Torres Morales',
+      patientDni: '45678912',
+      area: 'Dermatología',
+      date: 'Hoy',
+      time: '02:00 PM',
+      status: 'Confirmada',
+    },
+    {
+      id: '4',
+      code: 'APT-2026-004',
+      patientName: 'Carlos Mendoza Ruiz',
+      patientDni: '78945612',
+      area: 'Medicina General',
+      doctor: 'Dra. Ana Torres',
+      date: 'Hoy',
+      time: '03:30 PM',
+      status: 'Pendiente',
+    },
+    {
+      id: '5',
+      code: 'APT-2026-005',
+      patientName: 'Lucía Fernández Castro',
+      patientDni: '32165498',
+      area: 'Pediatría',
+      date: 'Hoy',
+      time: '04:00 PM',
+      status: 'Validada por recepción',
+    },
+  ];
+
+  const displayedAppointments = todayAppointments.length > 0 ? todayAppointments : (
+    appConfig.useMocks ? mockUpcomingAppointments : allAdminAppointments.slice(0, 5)
+  );
 
   return (
     <div className="space-y-6">
@@ -258,7 +283,7 @@ export default function AdminDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-[#E2E8F0]">
-                {upcomingAppointments.map((appointment) => (
+                {displayedAppointments.map((appointment: any) => (
                   <tr
                     key={appointment.id}
                     className="hover:bg-[#F8FAFC] transition-colors cursor-pointer"
@@ -268,16 +293,16 @@ export default function AdminDashboard() {
                       <span className="font-medium text-[#0F172A]">{appointment.code}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[#0F172A]">{appointment.patient}</span>
+                      <span className="text-[#0F172A]">{appointment.patientName || (appointment as any).patient}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[#64748B]">{appointment.dni}</span>
+                      <span className="text-[#64748B]">{appointment.patientDni || (appointment as any).dni || '—'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-[#0F172A]">{appointment.area}</span>
                     </td>
                     <td className="px-6 py-4">
-                      <span className="text-[#64748B]">{appointment.doctor || '—'}</span>
+                      <span className="text-[#64748B]">{appointment.professional || (appointment as any).doctor || '—'}</span>
                     </td>
                     <td className="px-6 py-4">
                       <span className="text-[#0F172A]">{appointment.time}</span>
@@ -294,7 +319,7 @@ export default function AdminDashboard() {
 
         {/* Mobile Cards */}
         <div className="lg:hidden space-y-4">
-          {upcomingAppointments.map((appointment) => (
+          {displayedAppointments.map((appointment: any) => (
             <div
               key={appointment.id}
               onClick={() => navigate('/admin/appointments')}
@@ -302,7 +327,7 @@ export default function AdminDashboard() {
             >
               <div className="flex items-start justify-between mb-3">
                 <div>
-                  <h3 className="font-bold text-[#0F172A] mb-1">{appointment.patient}</h3>
+                  <h3 className="font-bold text-[#0F172A] mb-1">{appointment.patientName || (appointment as any).patient}</h3>
                   <p className="text-sm text-[#64748B]">{appointment.code}</p>
                 </div>
                 {getStatusBadge(appointment.status)}
@@ -316,10 +341,10 @@ export default function AdminDashboard() {
                   <Clock className="w-4 h-4 text-[#64748B]" />
                   <span className="text-sm text-[#0F172A]">{appointment.time}</span>
                 </div>
-                {appointment.doctor && (
+                {(appointment.professional || (appointment as any).doctor) && (
                   <div className="flex items-center gap-2">
                     <UserCog className="w-4 h-4 text-[#64748B]" />
-                    <span className="text-sm text-[#64748B]">{appointment.doctor}</span>
+                    <span className="text-sm text-[#64748B]">{appointment.professional || (appointment as any).doctor}</span>
                   </div>
                 )}
               </div>
