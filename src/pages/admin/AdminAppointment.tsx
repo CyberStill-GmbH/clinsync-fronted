@@ -170,6 +170,8 @@ export default function AdminAppointments() {
     if (!selectedAppointment) return;
     try {
       await validateMutation.mutateAsync(selectedAppointment.id);
+      
+      // 1. Local admin notification
       window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
         detail: {
           title: 'Cita Validada',
@@ -177,6 +179,17 @@ export default function AdminAppointments() {
           type: 'appointment'
         }
       }));
+
+      // 2. Broadcast to the patient's tab in real-time
+      const channel = new BroadcastChannel('clinsync_notifications');
+      channel.postMessage({
+        title: 'Cita Confirmada',
+        message: `Tu cita de ${selectedAppointment.area} con ${selectedAppointment.professional || 'el médico asignado'} ha sido validada y confirmada.`,
+        type: 'appointment',
+        role: 'PATIENT'
+      });
+      channel.close();
+
       toast.success('Cita validada correctamente');
       setShowValidate(false);
       setSelectedAppointment(null);
@@ -260,6 +273,7 @@ export default function AdminAppointments() {
         }
       });
 
+      // 1. Local admin notification
       window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
         detail: {
           title: 'Cita Reprogramada',
@@ -267,6 +281,16 @@ export default function AdminAppointments() {
           type: 'appointment'
         }
       }));
+
+      // 2. Broadcast to the patient's tab in real-time
+      const channel = new BroadcastChannel('clinsync_notifications');
+      channel.postMessage({
+        title: 'Tu Cita ha sido Reprogramada',
+        message: `Tu cita de ${selectedAppointment.area} ha sido reprogramada para el ${rescheduleData.newDate} a las ${rescheduleData.newTime}. Motivo: ${rescheduleData.reason}.`,
+        type: 'appointment',
+        role: 'PATIENT'
+      });
+      channel.close();
 
       toast.success('Cita reprogramada correctamente');
       setShowReschedule(false);
@@ -294,6 +318,8 @@ export default function AdminAppointments() {
           cancellationReason: cancelReason,
         }
       });
+
+      // 1. Local admin notification
       window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
         detail: {
           title: 'Cita Cancelada',
@@ -301,6 +327,17 @@ export default function AdminAppointments() {
           type: 'system'
         }
       }));
+
+      // 2. Broadcast to the patient's tab in real-time
+      const channel = new BroadcastChannel('clinsync_notifications');
+      channel.postMessage({
+        title: 'Cita Cancelada',
+        message: `Tu cita de ${selectedAppointment.area} ha sido cancelada por la clínica. Motivo: "${cancelReason}".`,
+        type: 'system',
+        role: 'PATIENT'
+      });
+      channel.close();
+
       toast.success('Cita cancelada correctamente');
       setShowCancel(false);
       setSelectedAppointment(null);
