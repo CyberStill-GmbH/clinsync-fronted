@@ -1,137 +1,178 @@
-# ClinSync Frontend Client 💻
+# ClinSync Frontend 💻
 
 [![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)](https://react.dev/)
 [![Vite](https://img.shields.io/badge/Vite-646CFF?style=for-the-badge&logo=vite&logoColor=white)](https://vite.dev/)
 [![TypeScript](https://img.shields.io/badge/TypeScript-3178C6?style=for-the-badge&logo=typescript&logoColor=white)](https://www.typescriptlang.org/)
 [![TailwindCSS](https://img.shields.io/badge/Tailwind_CSS-38B2AC?style=for-the-badge&logo=tailwind-css&logoColor=white)](https://tailwindcss.com/)
-[![Sonner](https://img.shields.io/badge/Sonner_Toasts-orange?style=for-the-badge&logo=toast)](https://github.com/emilkowalski/sonner)
-[![BroadcastChannel API](https://img.shields.io/badge/Broadcast_Channel-blueviolet?style=for-the-badge&logo=javascript)](https://developer.mozilla.org/en-US/docs/Web/API/Broadcast_Channel_API)
+[![Sonner](https://img.shields.io/badge/Sonner_Toasts-FF6B35?style=for-the-badge)](https://github.com/emilkowalski/sonner)
+[![TanStack Query](https://img.shields.io/badge/TanStack_Query-FF4154?style=for-the-badge&logo=reactquery&logoColor=white)](https://tanstack.com/query)
 
-A premium, state-of-the-art Single Page Application (SPA) serving as the user portal and medical dashboard for **ClinSync**. Engineered using **React, Vite, and TypeScript**, it delivers a clinical user experience, featuring responsive dashboards, real-time inter-tab sync, and smooth micro-animations.
-
----
-
-## 🔬 Clinical User Experience (UX)
-
-ClinSync's UI is custom-tailored to minimize friction in high-stress medical environments:
-* **Matte-Surface Design Language:** Curated HSL color palette utilizing clean backgrounds (`#F8FAFC`), structural `1px` slate borders, and vibrant indicators.
-* **Informative State Feedbacks:** Instant visual translation of raw API enum codes (`VALIDATED_BY_RECEPTION`, `NO_SHOW`, etc.) into intuitive Spanish status badges.
-* **Optimistic Controls & Loaders:** Prevent duplicate actions by automatically disabling action buttons during pending mutations.
+The patient portal and clinical administration dashboard for **ClinSync**. A premium, production-grade React SPA built for real-world clinic usage — not a prototype.
 
 ---
 
-## 🏗️ Dual-Mode Architecture (Mock / Real API)
+## 🏥 Why ClinSync?
 
-To enable developers to work offline or test flows without a database connection, ClinSync incorporates a service-level **Dual-Mode Fallback System** governed by `appConfig.useMocks`.
+ClinSync's frontend is built with a Staff Engineer mindset: every UI decision has a reason, every network call is abstracted, and every error has a user-facing resolution path.
 
-### Data Flow Diagram
-```text
-           ┌──────────────────────────────────────────────┐
-           │                  React Page                  │
-           │           (MyAppointments / Book)            │
-           └──────────────────────┬───────────────────────┘
-                                  │
-                       ┌──────────▼──────────┐
-                       │   TanStack Query    │ (Server State Cache)
-                       │   Hooks / Mutations │
-                       └──────────┬──────────┘
-                                  │
-                       ┌──────────▼──────────┐
-                       │   Service Abstraction│ (e.g. appointment.service.ts)
-                       └──────────┬──────────┘
-                                  │
-                     🚀 Is VITE_USE_MOCKS true?
-                     ├─── Yes ───► [ Local Mock Arrays / Delay Simulation ]
-                     └─── No  ───► [ Axios client ] ──► [ NestJS REST API ]
+- **Real-time cross-tab notifications** via BroadcastChannel — patient books, admin is notified instantly
+- **Dual-mode architecture** — works fully offline with high-fidelity mocks (`VITE_USE_MOCKS=true`)
+- **401 auto-logout** — expired tokens redirect to login without any user confusion
+- **No `alert()`** — all errors surface as styled `sonner` toasts with actionable messages
+- **Skeleton loaders** on every async data surface — no layout shifts, no blank screens
+- **Confirmation modals** before every destructive action — no accidental cancellations
+
+---
+
+## 🏗️ Architecture
+
+### Data Flow (Mock / Real API)
+```
+React Page
+    │
+    ▼
+TanStack Query Hook          ← caches, deduplicates, refetches
+    │
+    ▼
+Service Function             ← single branching point: mock OR real
+    │
+    ├── VITE_USE_MOCKS=true  → Mock Array (instant, typed)
+    │
+    └── VITE_USE_MOCKS=false → httpClient (Axios)
+                                    │
+                              Interceptors:
+                              - Attach Bearer token
+                              - 401 → clearStorage + redirect
+                              - 409 → friendly message
+                                    │
+                                    ▼
+                              NestJS REST API
 ```
 
-All React UI views remain completely unaware of the data origin. They consume standardized TanStack Query hooks, which fetch from abstractions that route requests either to static high-fidelity mocks or to the live HTTP NestJS backend.
+### Route Guards
+```
+/ (public)
+├── GuestGuard     → redirect to dashboard if already logged in
+│   ├── /login
+│   └── /register
+
+└── AuthGuard      → redirect to / if not authenticated
+    ├── RoleGuard(PATIENT)
+    │   └── /patient/**
+    └── RoleGuard(ADMIN, RECEPTIONIST)
+        └── /admin/**
+```
 
 ---
 
-## 📡 Real-Time Cross-Portal Sync (BroadcastChannel API)
+## 📡 Real-Time Notifications (BroadcastChannel)
 
-ClinSync features instant, low-latency inter-tab notifications via the native browser **BroadcastChannel API** (channel name: `'clinsync_notifications'`). 
+ClinSync uses the native browser BroadcastChannel API (`'clinsync_notifications'`) for zero-latency cross-tab communication:
 
-### Real-Time Notification Mechanics:
-1. **Patient books an appointment:** The booking tab broadcasts a `{ title: 'Nueva Cita Agendada', role: 'ADMIN' }` message.
-2. **Admin/Receptionist dashboard gets notified:** Any open admin tab listening to the channel captures the message, dynamically updates its notification bell counter, saves the alert to `localStorage`, and triggers a **gorgeous slide-out popup toast** using `sonner`.
-3. **Admin updates an appointment (Approval / Rescheduling / Cancellation):** The admin's browser window broadcasts a matching message targeting the `'PATIENT'` role.
-4. **Patient portal receives details:** The patient's open tab instantly updates its bell count and displays a customized toast (e.g., green for confirmation, blue for rescheduling, and red for cancellations) without requiring any manual refreshing.
+```
+[Patient Tab] Books appointment
+      │
+      └─► BroadcastChannel.postMessage({ role: 'ADMIN', title: 'Nueva Cita' })
+                │
+      [Admin Tab] Receives message
+                │
+                ├─► Notification bell count increments (+1)
+                ├─► Persisted to localStorage
+                └─► sonner toast slides in (top-right)
 
----
-
-## 📖 Documented Portals & User Flows
-
-### 👤 Patient Self-Scheduling Portal
-- [x] **Account Provisioning:** Self-register with DNI, phone number, and password credentials.
-- [x] **Secure Access:** Logging in redirects to `/dashboard`, saving JWT credentials.
-- [x] **Specialty Navigator:** Browse clinical areas populated dynamically from PostgreSQL.
-- [x] **Available Calendars:** Instantly view active slots, automatically excluding booked slots.
-- [x] **Atomic Reservations:** Complete booking reservations, immediately updating booking lists.
-
-### 🏢 Clinic Administrative Dashboard
-- [x] **Receptionist Authorization:** Login handles administrative claims and redirects to `/admin`.
-- [x] **Operational Control Cards:** Track active counts of today's appointments, pending validations, and attendance indicators.
-- [x] **Appointment Lifecycle Manager:**
-  - **Validate Cita:** Instantly shifts bookings to confirmed states.
-  - **Reprogramar Cita:** Releases the previous time slot back to the directory and locks the newly chosen franja.
-  - **Cancelar Cita:** Prompts for a justification reason, cancels booking, and makes the time slot available again.
-  - **Asistencia Indicator:** Mark patients as `ATTENDED` or `NO_SHOW`.
+[Admin Tab] Validates / Reschedules / Cancels
+      │
+      └─► BroadcastChannel.postMessage({ role: 'PATIENT', title: 'Cita Confirmada' })
+                │
+      [Patient Tab] Receives message → toast + bell update
+```
 
 ---
 
-## ⚙️ Getting Started & Setup
+## 📖 User Flows
 
-### Environment Variables
-Configure the React client behavior by creating a `.env.local` file in the root directory:
+### 👤 Patient Portal
+- [x] Register with DNI, phone, name — creates real PostgreSQL record
+- [x] Login → JWT stored → redirect to `/patient`
+- [x] Browse medical specialties with visual icons and color palettes
+- [x] View available schedule slots by area (AVAILABLE only)
+- [x] Book appointment — atomic lock, 409 handled with clear toast
+- [x] View appointment history with Spanish status labels
+- [x] Real-time notification when admin validates/reschedules/cancels
+
+### 🏢 Admin / Receptionist Dashboard
+- [x] Login → role-based redirect to `/admin`
+- [x] Dashboard cards with live metrics (today, pending, validated, no-show)
+- [x] Skeleton loaders while stats fetch
+- [x] Manage all appointments: validate, reschedule, cancel with reason
+- [x] Mark attendance: ATTENDED / NO_SHOW
+- [x] Confirmation modal before every destructive action
+- [x] Real-time toast + bell when patient books
+
+---
+
+## ⚙️ Setup
+
+### Environment
 ```env
-# URL pointing to the live NestJS backend API
+# .env.local — real backend
 VITE_API_URL=http://localhost:3000/api
-
-# Turn on/off high-fidelity mock fallback
 VITE_USE_MOCKS=false
+
+# .env.example — mock mode (no backend needed)
+VITE_API_URL=http://localhost:3000/api
+VITE_USE_MOCKS=true
 ```
 
-### Installation & Execution
+### Run
 ```bash
-# Clone the repository and install dependencies
-cd clinsync-frontend
 npm install
+npm run dev      # http://localhost:5173
+npm run build    # production bundle
+```
 
-# Start local Vite development server (port 5173 / 5174)
-npm run dev
+### Test Credentials
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@clinsync.com` | `12345678` |
+| Receptionist | `recepcion@clinsync.com` | `12345678` |
+| Patient | `paciente@test.com` | `12345678` |
 
-# Compile TypeScript and generate optimized production bundle
-npm run build
+---
+
+## 📦 Components
+
+| Component | Purpose |
+|---|---|
+| `SkeletonCard` | Animated placeholder for list/detail loading |
+| `SkeletonStatCard` | Dashboard stat card skeleton |
+| `PageLoader` | Full-page spinner for route guard loading state |
+| `ConfirmModal` | Accessible destructive-action confirmation dialog (ESC, focus trap) |
+| `NotificationsPopover` | Bell icon with BroadcastChannel listener and persistent history |
+
+---
+
+## ✅ Build Metrics
+
+```
+tsc -b          ✅ 0 TypeScript errors
+vite build      ✅ 1887 modules transformed
+
+dist/index.html                   0.47 kB │ gzip:   0.30 kB
+dist/assets/index.css            54.69 kB │ gzip:  10.20 kB
+dist/assets/index.js            641.54 kB │ gzip: 171.68 kB
+
+✓ built in 1.82s
 ```
 
 ---
 
-## 📈 Build & Performance Metrics
+## 🗺️ Roadmap
 
-ClinSync Frontend compiles under strict TypeScript compiler rules. Production bundles are highly optimized and code-splitting ready:
-
-* **TypeScript Compilation:** Passed with zero compiler errors.
-* **Production Build Output:**
-  ```bash
-  > tsc -b && vite build
-  vite v8.0.12 building client environment for production...
-  ✓ 1886 modules transformed.
-  
-  dist/index.html                   0.47 kB │ gzip:   0.30 kB
-  dist/assets/index-_z-11Ihq.css   52.73 kB │ gzip:   9.84 kB
-  dist/assets/index-MNhGxyP0.js   639.69 kB │ gzip: 171.25 kB
-  
-  ✓ built in 1.10s (SUCCESS)
-  ```
-
----
-
-## 🔒 Session Persistence & Route Guards
-
-Security boundaries are enforced client-side using robust React Router components:
-* **Stateless Token Persistence:** JWT access tokens and user roles are saved under `clinsync_access_token` and `clinsync_auth_user` storage keys. On app initialization, the `AuthProvider` restores active sessions.
-* **`GuestGuard`:** Restricts authenticated users from reaching landing `/` or `/register` paths, routing them instead to their respective dashboards.
-* **`AuthGuard`:** Blocks unauthenticated navigation, redirecting visitors back to login.
-* **`RoleGuard`:** Enforces granular checks. Standard patient tokens are rejected at the administrative `/admin` gate (returning a 403 authorization boundary), while administrator roles are strictly channeled to Reception.
+| Version | Feature |
+|---|---|
+| **v1.1** | Patient profile editing with appointment history view |
+| **v1.2** | Dark mode toggle |
+| **v1.3** | Mobile-first responsive improvements |
+| **v2.0** | Replace BroadcastChannel with WebSocket for server-push events |
+| **v2.1** | Calendar view for admin (visual slot grid) |
