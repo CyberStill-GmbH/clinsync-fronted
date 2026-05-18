@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bell, Calendar, CreditCard, Activity, CheckCircle } from 'lucide-react';
+import { toast } from 'sonner';
 
 export type NotificationType = 'appointment' | 'payment' | 'system';
 
@@ -89,27 +90,59 @@ export function NotificationsPopover() {
     localStorage.setItem(storageKey, JSON.stringify(newNotifs));
   };
 
-  // Listen for custom notification events from anywhere in the app
+  // Listen for custom notification events and global BroadcastChannel messages
   useEffect(() => {
-    const handleNewNotification = (event: Event) => {
-      const customEvent = event as CustomEvent<{ title: string; message: string; type: NotificationType }>;
-      const { title, message, type } = customEvent.detail;
+    const channel = new BroadcastChannel('clinsync_notifications');
+
+    const addNotification = (title: string, message: string, type: NotificationType, role?: string) => {
+      if (role && user?.role !== role) return;
+
       const newNotif: Notification = {
         id: Date.now().toString(),
-        type,
+        type: type || 'system',
         title,
         message,
         date: 'Hace un momento',
         read: false,
       };
-      saveNotifications([newNotif, ...notifications]);
+
+      setNotifications((prev) => {
+        const updated = [newNotif, ...prev];
+        localStorage.setItem(storageKey, JSON.stringify(updated));
+        return updated;
+      });
+
+      // Render emergente toast
+      if (type === 'appointment') {
+        toast.success(title, {
+          description: message,
+          duration: 6000,
+        });
+      } else {
+        toast.info(title, {
+          description: message,
+          duration: 5000,
+        });
+      }
     };
 
-    window.addEventListener('clinsync_new_notification', handleNewNotification);
-    return () => {
-      window.removeEventListener('clinsync_new_notification', handleNewNotification);
+    channel.onmessage = (event) => {
+      const { title, message, type, role } = event.data;
+      addNotification(title, message, type, role);
     };
-  }, [notifications, storageKey]);
+
+    const handleLocalNewNotification = (event: Event) => {
+      const customEvent = event as CustomEvent<{ title: string; message: string; type: NotificationType }>;
+      const { title, message, type } = customEvent.detail;
+      addNotification(title, message, type);
+    };
+
+    window.addEventListener('clinsync_new_notification', handleLocalNewNotification);
+    return () => {
+      channel.close();
+      window.removeEventListener('clinsync_new_notification', handleLocalNewNotification);
+    };
+  }, [storageKey, user]);
 
   // Click outside to close
   useEffect(() => {

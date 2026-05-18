@@ -86,6 +86,7 @@ export default function BookAppointment() {
 
   const confirmAppointment = async () => {
     const dispatchNotif = () => {
+      // 1. Notify patient locally
       window.dispatchEvent(new CustomEvent('clinsync_new_notification', {
         detail: {
           title: 'Cita Registrada',
@@ -93,6 +94,16 @@ export default function BookAppointment() {
           type: 'appointment'
         }
       }));
+
+      // 2. Broadcast notification to admin/receptionist tabs in real-time
+      const channel = new BroadcastChannel('clinsync_notifications');
+      channel.postMessage({
+        title: 'Nueva Cita Agendada',
+        message: `El paciente ${user?.name || user?.email?.split('@')[0] || 'Paciente'} ha agendado una cita de ${selectedArea} para el ${selectedDate.toLocaleDateString('es-ES')} a las ${selectedTime}.`,
+        type: 'appointment',
+        role: 'ADMIN'
+      });
+      channel.close();
     };
 
     if (appConfig.useMocks) {
